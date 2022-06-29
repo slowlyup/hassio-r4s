@@ -41,7 +41,13 @@ CONF_TARGET_TEMP = 100
 
 _LOGGER = logging.getLogger(__name__)
 
-SUPPORTED_DOMAINS = ["water_heater", "sensor", "light", "switch", "fan"]
+SUPPORTED_DOMAINS = [
+    "water_heater",
+    "sensor",
+    "light",
+    "switch",
+    "fan"
+]
 
 DOMAIN = "ready4sky"
 
@@ -60,11 +66,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     backlight = config.get(CONF_USE_BACKLIGHT)
 
     kettler = RedmondKettler(hass, mac, password, device, backlight)
-    
+
     seed(1)
     valueR = randint(5, 10)
     await asyncio.sleep(valueR)
-    
+
     try:
         await kettler.async_firstConnect()
         if not kettler._connected:
@@ -75,7 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         return False
 
     hass.data[DOMAIN][config_entry.entry_id] = kettler
-    
+
     device_registry = await dr.async_get_registry(hass)
     device_registry.async_get_or_create(
         config_entry_id=config_entry.entry_id,
@@ -84,7 +90,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         manufacturer="Redmond",
         name="Ready4Sky",
     )
-    
+
     async_track_time_interval(hass, hass.data[DOMAIN][config_entry.entry_id].async_update, scan_delta)
 
     for component in SUPPORTED_DOMAINS:
@@ -94,8 +100,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     return True
 
-
-
 async def async_unload_entry(hass:HomeAssistant, entry:ConfigEntry):
     try:
         for component in SUPPORTED_DOMAINS:
@@ -104,10 +108,6 @@ async def async_unload_entry(hass:HomeAssistant, entry:ConfigEntry):
     except ValueError:
         pass
     return True
-
-
-
-
 
 class BTLEConnection(btle.DefaultDelegate):
 
@@ -163,8 +163,6 @@ class BTLEConnection(btle.DefaultDelegate):
         except:
             pass
         return answ
-
-
 
 class RedmondKettler:
 
@@ -327,9 +325,9 @@ class RedmondKettler:
 
     def sendSync(self, conn, timezone = 4):
         answ = False
-        if self._type == 0 or self._type == 3 or self._type == 4 or self._type == 5:
+        if self._type in [0, 3, 4, 5]:
             answ = True
-        if self._type == 1 or self._type == 2:
+        if self._type in [1, 2]:
             if self._use_backlight:
                 tmz_hex_list = wrap(str(self.decToHex(timezone*60*60)), 2)
                 tmz_str = ''
@@ -359,17 +357,24 @@ class RedmondKettler:
             answ = True
         return answ
 
-    def sendMode(self, conn, mode, temp):   # 00 - boil 01 - heat to temp 03 - backlight (boil by default)    temp - in HEX
+    # 00 - boil
+    # 01 - heat
+    # temp 03 - backlight (boil by default)
+    # temp - in HEX
+    def sendMode(self, conn, mode, temp):
         answ = False
-        if self._type == 3 or self._type == 4 or self._type == 5:
+
+        if self._type in [3, 4, 5]:
             return True
-        if self._type == 0:
+        elif self._type == 0:
             str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '05' + mode + '00' + temp + '00aa', 'utf-8'))
-        if self._type == 1 or self._type == 2:
+        elif self._type in [1, 2]:
             str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '05' + mode + '00' + temp + '00000000000000000000800000aa', 'utf-8'))
+
         if conn.make_request(14, str2b):
             self.iterase()
             answ = True
+
         return answ
 
     def sendModeCook(self, conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat): #
@@ -443,9 +448,9 @@ class RedmondKettler:
 
     def sendSetLights(self, conn, boilOrLight = '01', rgb1 = '0000ff'): # 00 - boil light    01 - backlight
         answ = False
-        if self._type == 0 or self._type == 2 or self._type == 3 or self._type == 4 or self._type == 5:
+        if self._type == 0 or self._type == 3 or self._type == 4 or self._type == 5:
             answ = True
-        if self._type == 1:
+        if self._type == 1 or self._type == 2:
             rgb_mid = rgb1
             rgb2 = rgb1
             if boilOrLight == "00":
@@ -457,8 +462,6 @@ class RedmondKettler:
                 self.iterase()
                 answ = True
         return answ
-
-
 
 ### composite methods
     def startNightColor(self, i=0):

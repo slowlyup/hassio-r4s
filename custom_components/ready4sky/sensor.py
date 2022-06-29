@@ -6,18 +6,14 @@ from homeassistant.const import CONF_MAC
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-
-
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
-    if kettler._type == 0 or kettler._type == 1 or kettler._type == 2 or kettler._type == 3 or kettler._type == 4:
+
+    if kettler._type in [0, 1, 2, 3, 4]:
         async_add_entities([RedmondSensor(kettler)], True)
-    if kettler._type == 5:
+
+    elif kettler._type == 5:
         async_add_entities([RedmondCooker(kettler)], True)
-
-
-
-
 
 class RedmondSensor(Entity):
 
@@ -34,16 +30,17 @@ class RedmondSensor(Entity):
 
     def _handle_update(self):
         self._state = 'OFF'
+
         if self._kettler._status == '02':
-            if self._kettler._type == 3 or self._kettler._type == 4:
+            if self._kettler._type in [3, 4]:
                 self._state = 'ON'
-            else:
-                if self._kettler._mode == '00':
-                    self._state = 'BOIL'
-                if self._kettler._mode == '01':
-                    self._state = 'HEAT'
-                if self._kettler._mode == '03':
-                    self._state = 'LIGHT'
+            elif self._kettler._mode == '00':
+                self._state = 'BOIL'
+            elif self._kettler._mode == '01':
+                self._state = 'HEAT'
+            elif self._kettler._mode == '03':
+                self._state = 'LIGHT'
+
         self._sync = str(self._kettler._time_upd)
         self.schedule_update_ha_state()
 
@@ -83,10 +80,6 @@ class RedmondSensor(Entity):
     @property
     def unique_id(self):
         return f'{DOMAIN}[{self._kettler._mac}][{self._name}]'
-
-
-
-
 
 class RedmondCooker(Entity):
 

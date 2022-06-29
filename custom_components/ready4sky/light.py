@@ -13,24 +13,21 @@ from homeassistant.components.light import (
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-
-
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
-    if kettler._type == 1:
+
+    if kettler._type in [1, 2]:
         async_add_entities([RedmondLight(kettler)], True)
 
 class RedmondLight(LightEntity):
 
     def __init__(self, kettler):
         self._name = 'Light ' + kettler._name
-        self._hs = (0,0)
-        self._icon = 'mdi:lightbulb'
+        self._hs = (0, 0)
+        self._icon = 'mdi:floor-lamp'
         self._kettler = kettler
         self._ison = False
         self._hs = None
-
-
 
     async def async_added_to_hass(self):
         self._handle_update()
@@ -39,8 +36,10 @@ class RedmondLight(LightEntity):
     def _handle_update(self):
         self._hs = self._kettler.rgbhex_to_hs(self._kettler._rgb1)
         self._ison = False
+
         if self._kettler._status == '02' and self._kettler._mode == '03':
             self._ison = True
+
         self.schedule_update_ha_state()
 
     @property
@@ -82,7 +81,9 @@ class RedmondLight(LightEntity):
     async def async_turn_on(self, **kwargs):
         if ATTR_HS_COLOR in kwargs:
             self._hs = kwargs[ATTR_HS_COLOR]
+
         self._kettler._rgb1 = self._kettler.hs_to_rgbhex(self._hs)
+
         await self._kettler.async_startNightColor()
 
     async def async_turn_off(self, **kwargs):

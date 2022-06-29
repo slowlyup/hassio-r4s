@@ -1,7 +1,27 @@
 
-SUPPORTED_DEVICES = {'RK-M170S':0, 'RK-M171S':0, 'RK-M173S':0, 'RK-G200S':1, 'RK-G201S':1, 'RK-G202S':1, 'RK-G210S':1, 'RK-G211S':1, 'RK-G212S':1, 'RK-G240S':1, 'RK-M216S':2, 'RK-M216S-E':2, 'RAC-3706S':3, 'RFS-HPL001':4, 'RSP-103S':4, 'RCH-7001S':4, 'RMC-M800S':5, 'RMC-M223S':5, 'RMC-M92S':5, 'RMC-M92S-E':5, 'RMC-M40S':5}
-
-
+SUPPORTED_DEVICES = {
+    'RK-M170S':0,
+    'RK-M171S':0,
+    'RK-M173S':0,
+    'RK-G200S':2,
+    'RK-G201S':1,
+    'RK-G202S':1,
+    'RK-G210S':1,
+    'RK-G211S':1,
+    'RK-G212S':1,
+    'RK-G240S':1,
+    'RK-M216S':2,
+    'RK-M216S-E':2,
+    'RAC-3706S':3,
+    'RFS-HPL001':4,
+    'RSP-103S':4,
+    'RCH-7001S':4,
+    'RMC-M800S':5,
+    'RMC-M223S':5,
+    'RMC-M92S':5,
+    'RMC-M92S-E':5,
+    'RMC-M40S':5
+}
 
 COOKER_PROGRAMS = {
     'rice':['01', '00', '64', '00', '23','00','00','01'],
@@ -22,4 +42,3 @@ COOKER_PROGRAMS = {
     'steam_fish':['0b', '02', '64', '00', '19','00','00','01'],
     'steam_meat':['0b', '03', '64', '00', '28','00','00','01'],
     'hot':['0c', '00', '64', '00', '28','00','00','01']}
-    

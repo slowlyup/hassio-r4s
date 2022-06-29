@@ -6,13 +6,12 @@ from homeassistant.const import CONF_MAC
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-
-
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
+
     if kettler._type == 3:
         async_add_entities([RedmondSwitchIon(kettler)], True)
-    if kettler._type == 4:
+    elif kettler._type == 4:
         async_add_entities([RedmondSwitch(kettler)], True)
 
 class RedmondSwitch(SwitchEntity):
@@ -22,8 +21,6 @@ class RedmondSwitch(SwitchEntity):
         self._icon = 'mdi:air-filter'
         self._kettler = kettler
         self._ison = False
-
-
 
     async def async_added_to_hass(self):
         self._handle_update()
@@ -85,8 +82,6 @@ class RedmondSwitchIon(SwitchEntity):
         self._kettler = kettler
         self._ison = False
 
-
-
     async def async_added_to_hass(self):
         self._handle_update()
         self.async_on_remove(async_dispatcher_connect(self._kettler.hass, 'ready4skyupdate', self._handle_update))
@@ -134,4 +129,3 @@ class RedmondSwitchIon(SwitchEntity):
     @property
     def unique_id(self):
         return f'{DOMAIN}[{self._kettler._mac}][{self._name}]'
-    

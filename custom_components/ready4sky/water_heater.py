@@ -20,8 +20,6 @@ from homeassistant.const import (
 )
 from homeassistant.helpers import entity_platform
 
-
-
 ###
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
@@ -44,29 +42,21 @@ from .r4sconst import COOKER_PROGRAMS
 _LOGGER = logging.getLogger(__name__)
 ###
 
-
-
 OPERATION_LIST = [STATE_OFF, STATE_ELECTRIC]
 SUPPORT_FLAGS_HEATER = (SUPPORT_TARGET_TEMPERATURE | SUPPORT_OPERATION_MODE)
 COOKER_OPERATION_LIST = [program for program,value in COOKER_PROGRAMS.items()]
 COOKER_OPERATION_LIST.append(STATE_OFF)
 
-
-
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
 
-    if kettler._type == 0 or kettler._type == 1 or kettler._type == 2:
+    if kettler._type in [0, 1, 2]:
         async_add_entities([RedmondWaterHeater(kettler)], True)
-    if kettler._type == 5:
+    elif kettler._type == 5:
         async_add_entities([RedmondCooker(kettler)], True)
         platform = entity_platform.current_platform.get()
         platform.async_register_entity_service("set_timer",{vol.Required("hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)), vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59))},"async_set_timer",)
         platform.async_register_entity_service("set_manual_program",{vol.Required("prog"): vol.All(vol.Coerce(int), vol.Range(min=0, max=12)), vol.Required("subprog"): vol.All(vol.Coerce(int), vol.Range(min=0, max=3)),vol.Required("temp"): vol.All(vol.Coerce(int), vol.Range(min=30, max=180)), vol.Required("hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)), vol.Required("dhours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),vol.Required("dminutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)), vol.Required("heat"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1))},"async_set_manual_program",)
-
-
-
-
 
 class RedmondWaterHeater(WaterHeaterEntity):
 
