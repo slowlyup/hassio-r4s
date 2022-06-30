@@ -20,7 +20,7 @@ class RedmondSensor(Entity):
     def __init__(self, kettler):
         self._kettler = kettler
         self._name = 'Status ' + self._kettler._name
-        self._icon = 'mdi:sync'
+        self._icon = 'mdi:toggle-switch-off'
         self._state = ''
         self._sync = ''
 
@@ -62,7 +62,7 @@ class RedmondSensor(Entity):
 
     @property
     def icon(self):
-        return self._icon
+        return 'mdi:toggle-switch' if self._state != 'OFF' else self._icon
 
     @property
     def available(self):
@@ -98,17 +98,20 @@ class RedmondCooker(Entity):
 
     def _handle_update(self):
         self._state = 'OFF'
+
         if self._kettler._status == '01':
             self._state = 'PROGRAM'
-        if self._kettler._status == '02':
+        elif self._kettler._status == '02':
             self._state = 'ON'
-        if self._kettler._status == '04':
+        elif self._kettler._status == '04':
             self._state = 'HEAT'
-        if self._kettler._status == '05':
+        elif self._kettler._status == '05':
             self._state = 'DELAYED START'
+
         self._sync = str(self._kettler._time_upd)
         self._timer_prog = str(self._kettler._ph)+':'+str(self._kettler._pm)
         self._timer_curr = str(self._kettler._th)+':'+str(self._kettler._tm)
+
         self.schedule_update_ha_state()
 
     @property

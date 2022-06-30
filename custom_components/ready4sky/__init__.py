@@ -2,28 +2,25 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from re import search
-from bluepy import btle
 import binascii
 import asyncio
-from functools import partial
-
-from time import sleep
+import inspect
 import time
-from datetime import datetime
-from textwrap import wrap
 import logging
 
-from random import seed
-from random import randint
+from re import search
+from bluepy import btle
+from functools import partial
+from datetime import (datetime, timedelta)
+from textwrap import wrap
+from random import (seed, randint)
 
-from datetime import timedelta
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval, async_call_later
-import homeassistant.util.color as color_util
+from homeassistant.util import color as color_util
 from homeassistant.const import (
     CONF_DEVICE,
     CONF_MAC,
@@ -82,8 +79,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     hass.data[DOMAIN][config_entry.entry_id] = kettler
 
-    device_registry = await dr.async_get_registry(hass)
-    device_registry.async_get_or_create(
+    dr.async_get(hass).async_get_or_create(
         config_entry_id=config_entry.entry_id,
         identifiers={(DOMAIN, config_entry.unique_id)},
         connections={(dr.CONNECTION_NETWORK_MAC, mac)},
@@ -110,35 +106,46 @@ async def async_unload_entry(hass:HomeAssistant, entry:ConfigEntry):
     return True
 
 class BTLEConnection(btle.DefaultDelegate):
-
     def __init__(self, mac, device):
         btle.DefaultDelegate.__init__(self)
+
         self._conn = None
         self._mac = mac
         self._iface = 0
-        match_result = search(r'hci([\d]+)', device)
-        if match_result is None:
-            pass
-        else:
-            self._iface = int(match_result.group(1))
+        self._iter = 0
         self._callbacks = {}
 
-    def __enter__(self, i=0):
+        match_result = search(r'hci([\d]+)', device)
+        if match_result is not None:
+            self._iface = int(match_result.group(1))
+
+    def __enter__(self, i = 0):
+        self.disconnect()
+
         try:
-            self.__exit__(None, None, None)
             self._conn = btle.Peripheral(deviceAddr=self._mac, addrType=btle.ADDR_TYPE_RANDOM, iface=self._iface)
             self._conn.withDelegate(self)
-        except:
-            i=i+1
-            if i<5:
+        except BaseException as ex:
+            i += 1
+
+            if i < 5:
+                time.sleep(1)
                 return self.__enter__(i)
             else:
                 _LOGGER.error('unable to connect to device')
+                _LOGGER.exception(e)
+                self.disconnect()
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
+
+    def disconnect(self):
         try:
-            self._conn.disconnect()
+            if self._conn is not None:
+                self._conn.disconnect()
+                self._conn = None
         except:
             pass
         self._conn = None
@@ -154,15 +161,19 @@ class BTLEConnection(btle.DefaultDelegate):
     def set_callback(self, handle, function):
         self._callbacks[handle] = function
 
-    def make_request(self, handle, value, with_response=True):
-        answ = False
+    def make_request(self, handle, value, nextInter=False, with_response=True):
         try:
             self._conn.writeCharacteristic(handle, value, withResponse=with_response)
             self._conn.waitForNotifications(2.0)
-            answ = True
-        except:
-            pass
-        return answ
+            if nextInter:
+                self._iter = 0 if self._iter > 99 else self._iter + 1
+
+            return True
+        except BaseException as ex:
+            _LOGGER.error('not send request %s', inspect.getouterframes(inspect.currentframe(), 2)[1][3])
+            _LOGGER.exception(ex)
+
+        return False
 
 class RedmondKettler:
 
@@ -185,7 +196,6 @@ class RedmondKettler:
         self._rand = '5e'
         self._mode = '00' # '00' - boil, '01' - heat to temp, '03' - backlight  for cooker 00 - heat after cook   01 - off after cook        for fan 00-06 - speed 
         self._status = '00' #may be '00' - OFF or '02' - ON         for cooker 00 - off   01 - setup program   02 - on  04 - heat   05 - delayed start
-        self._iter = 0
         self._prog = '00' #  program
         self._sprog = '00' # subprogram
         self._ph = 0 #  program hours
@@ -197,25 +207,29 @@ class RedmondKettler:
         self._conn = BTLEConnection(self._mac, self._device)
         self._conn.set_callback(11, self.handle_notification)
 
-
-
     def handle_notification(self, data):
         s = binascii.b2a_hex(data).decode("utf-8")
-        arr = [s[x:x+2] for x in range (0, len(s), 2)]
-        if arr[2] == 'ff': ### sendAuth
-            if self._type == 0 or self._type == 1 or self._type == 3 or self._type == 4 or self._type == 5:
+        arr = [s[x:x+2] for x in range(0, len(s), 2)]
+
+        ### sendAuth
+        if arr[2] == 'ff':
+            if self._type in [0, 1, 3, 4, 5]:
                 if arr[3] == '01':
                     self._connected = True
                 else:
                     self._connected = False
-            if self._type == 2:
+            elif self._type == 2:
                 if arr[3] == '02':
                     self._connected = True
                 else:
                     self._connected = False
-        if arr[2] == '03'  or arr[2] == '04'  or arr[2] == '05' or arr[2] == '6e'  or arr[2] == '37' or arr[2] == '32' or arr[2] == '33': ### sendOn    sendOff    sendMode    sendSync   sendUseBacklight   sendSetLights   sendGetLights
+
+        ### sendOn, sendOff, sendMode, sendSync, sendSetLights, sendGetLights, sendUseBacklight
+        elif arr[2] in ['03', '04', '6e', '32' , '33', '37']:
             pass
-        if arr[2] == '06': ### sendStatus
+
+        ### sendStatus
+        elif arr[2] == '06': 
             if self._type == 0:
                 self._temp = self.hexToDec(str(arr[13]))
                 self._status = str(arr[11])
@@ -225,7 +239,7 @@ class RedmondKettler:
                     self._tgtemp = self.hexToDec(tgtemp)
                 else:
                     self._tgtemp = 100
-            if self._type == 1 or self._type == 2:
+            elif self._type in [1, 2]:
                 self._temp = self.hexToDec(str(arr[8]))
                 self._status = str(arr[11])
                 self._mode = str(arr[3])
@@ -234,14 +248,14 @@ class RedmondKettler:
                     self._tgtemp = self.hexToDec(tgtemp)
                 else:
                     self._tgtemp = 100
-            if self._type == 3:
+            elif self._type == 3:
                 self._status = str(arr[11])
                 self._mode = str(arr[5])
                 self._ion = str(arr[14])
-            if self._type == 4:
+            elif self._type == 4:
                 self._status = str(arr[11])
                 self._mode = str(arr[3])
-            if self._type == 5:
+            elif self._type == 5:
                 self._prog = str(arr[3])
                 self._sprog = str(arr[4])
                 self._temp = self.hexToDec(str(arr[5]))
@@ -252,6 +266,7 @@ class RedmondKettler:
                 self._tm = self.hexToDec(str(arr[9]))
                 self._mode = str(arr[10])
                 self._status = str(arr[11])
+
             async_dispatcher_send(self.hass, 'ready4skyupdate')
 
     def calcMidColor(self, rgb1, rgb2):
@@ -260,11 +275,10 @@ class RedmondKettler:
             hs2 = self.rgbhex_to_hs(rgb2)
             hmid = int((hs1[0]+hs2[0])/2)
             smid = int((hs1[1]+hs2[1])/2)
-            hsmid = (hmid,smid)
-            rgbmid = self.hs_to_rgbhex(hsmid)
+            hsmid = (hmid, smid)
+            return self.hs_to_rgbhex(hsmid)
         except:
-            rgbmid = '00ff00'
-        return rgbmid
+            return '00ff00'
 
     def rgbhex_to_hs(self, rgbhex):
         rgb = color_util.rgb_hex_to_rgb_list(rgbhex)
@@ -273,10 +287,6 @@ class RedmondKettler:
     def hs_to_rgbhex(self, hs):
         rgb = color_util.color_hs_to_RGB(*hs)
         return color_util.color_rgb_to_hex(*rgb)
-
-    def iterase(self): # counter
-        self._iter+=1
-        if self._iter >= 100: self._iter = 0
 
     def hexToDec(self, chr):
         return int(str(chr), 16)
@@ -287,242 +297,185 @@ class RedmondKettler:
             char = '0' + char
         return char
 
-
-
     def sendResponse(self, conn):
-        answ = False
-        str2b = binascii.a2b_hex(bytes('0100', 'utf-8'))
-        if conn.make_request(12, str2b):
-            answ = True
-        return answ
+        if self._connected:
+            return conn.make_request(12, binascii.a2b_hex(bytes('0100', 'utf-8')))
+        return False
 
-    def sendAuth(self,conn):
-        answ = False
-        str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + 'ff' + self._key + 'aa', 'utf-8'))
-        if conn.make_request(14, str2b):
-            self.iterase()
-            answ = True
-        return answ
+    def sendAuth(self, conn):
+        return self.sendResponse(conn) and conn.make_request(14, binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + 'ff' + self._key + 'aa', 'utf-8')), True)
 
     def sendOn(self,conn):
-        answ = False
         if self._type == 0:
-            answ = True
-        if self._type == 1 or self._type == 2 or self._type == 3 or self._type == 4 or self._type == 5:
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '03aa', 'utf-8'))
-            if conn.make_request(14, str2b):
-                self.iterase()
-                answ = True
-        return answ
+            return True
+
+        if self._type in [1, 2, 3, 4, 5]:
+            return conn.make_request(14, binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '03aa', 'utf-8')), True)
+
+        return False
 
     def sendOff(self,conn):
-        answ = False
-        str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '04aa', 'utf-8'))
-        if conn.make_request(14, str2b):
-            self.iterase()
-            answ = True
-        return answ
+        return conn.make_request(14, binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '04aa', 'utf-8')), True)
 
     def sendSync(self, conn, timezone = 4):
-        answ = False
         if self._type in [0, 3, 4, 5]:
-            answ = True
+            return True
+
         if self._type in [1, 2]:
-            if self._use_backlight:
-                tmz_hex_list = wrap(str(self.decToHex(timezone*60*60)), 2)
-                tmz_str = ''
-                for i in reversed(tmz_hex_list):
-                    tmz_str+=i
-                timeNow_list = wrap(str(self.decToHex(time.mktime(datetime.now().timetuple()))), 2)
-                timeNow_str = ''
-                for i in reversed(timeNow_list):
-                    timeNow_str+=i
-                str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '6e' + timeNow_str + tmz_str + '0000aa', 'utf-8'))
-                if conn.make_request(14, str2b):
-                    self.iterase()
-                    answ = True
-            else:
-                answ = True
-        return answ
+            if not self._use_backlight:
+                return True
+
+            tmz_hex_list = wrap(str(self.decToHex(timezone*60*60)), 2)
+            tmz_str = ''
+            for i in reversed(tmz_hex_list):
+                tmz_str+=i
+            timeNow_list = wrap(str(self.decToHex(time.mktime(datetime.now().timetuple()))), 2)
+            timeNow_str = ''
+            for i in reversed(timeNow_list):
+                timeNow_str+=i
+
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '6e' + timeNow_str + tmz_str + '0000aa', 'utf-8'))
+            return conn.make_request(14, str2b, True)
+
+        return False
 
     def sendStat(self,conn):
-        answ = True
-        return answ
+        return True
 
     def sendStatus(self,conn):
-        answ = False
-        str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '06aa', 'utf-8'))
-        if conn.make_request(14, str2b):
-            self.iterase()
-            answ = True
-        return answ
+        return conn.make_request(14, binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '06aa', 'utf-8')), True)
 
     # 00 - boil
     # 01 - heat
     # temp 03 - backlight (boil by default)
     # temp - in HEX
     def sendMode(self, conn, mode, temp):
-        answ = False
-
         if self._type in [3, 4, 5]:
             return True
-        elif self._type == 0:
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '05' + mode + '00' + temp + '00aa', 'utf-8'))
+
+        if self._type == 0:
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '05' + mode + '00' + temp + '00aa', 'utf-8'))
         elif self._type in [1, 2]:
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '05' + mode + '00' + temp + '00000000000000000000800000aa', 'utf-8'))
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '05' + mode + '00' + temp + '00000000000000000000800000aa', 'utf-8'))
 
-        if conn.make_request(14, str2b):
-            self.iterase()
-            answ = True
+        return conn.make_request(14, str2b, True)
 
-        return answ
-
-    def sendModeCook(self, conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat): #
-        answ = False
+    def sendModeCook(self, conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat):
         if self._type == 5:
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '05' + prog + sprog + temp + hours + minutes + dhours + dminutes + heat + 'aa', 'utf-8'))
-            if conn.make_request(14, str2b):
-                self.iterase()
-                answ = True
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '05' + prog + sprog + temp + hours + minutes + dhours + dminutes + heat + 'aa', 'utf-8'))
+            return conn.make_request(14, str2b, True)
         else:
-            answ  = True
-        return answ
+            return True
+
+        return False
 
     def sendTimerCook(self, conn, hours, minutes): #
-        answ = False
         if self._type == 5:
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '0c' + hours + minutes + 'aa', 'utf-8'))
-            if conn.make_request(14, str2b):
-                self.iterase()
-                answ = True
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '0c' + hours + minutes + 'aa', 'utf-8'))
+            return conn.make_request(14, str2b, True)
         else:
-            answ  = True
-        return answ
+            return True
+
+        return False
 
     def sendTempCook(self, conn, temp): #temp in HEX or speed 00-06
-        answ = False
-        if self._type == 3 or self._type == 5:
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '0b' + temp + 'aa', 'utf-8'))
-            if conn.make_request(14, str2b):
-                self.iterase()
-                answ = True
+        if self._type in [3, 5]:
+            return conn.make_request(14, binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '0b' + temp + 'aa', 'utf-8')), True)
         else:
-            answ  = True
-        return answ
+            return True
+
+        return False
 
     def sendIonCmd(self, conn, onoff): #00-off 01-on
-        answ = False
         if self._type == 3:
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '1b' + onoff + 'aa', 'utf-8'))
-            if conn.make_request(14, str2b):
-                self.iterase()
-                answ = True
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '1b' + onoff + 'aa', 'utf-8'))
+            return conn.make_request(14, str2b, True)
         else:
-            answ  = True
-        return answ
+            return True
+        return False
 
     def sendAfterSpeed(self, conn):
-        answ = False
         if self._type == 3:
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '0900aa', 'utf-8'))
-            if conn.make_request(14, str2b):
-                self.iterase()
-                answ = True
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '0900aa', 'utf-8'))
+            return conn.make_request(14, str2b, True)
         else:
-            answ  = True
-        return answ
+            return  True
+        return False
 
     def sendUseBackLight(self, conn):
-        answ = False
-        if self._type == 0 or self._type == 3 or self._type == 4 or self._type == 5:
-            answ = True
-        if self._type == 1 or self._type == 2:
-            onoff="00"
-            if self._use_backlight:
-                onoff="01"
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '37c8c8' + onoff + 'aa', 'utf-8'))
-            if conn.make_request(14, str2b):
-                self.iterase()
-                answ = True
-        return answ
+        if self._type in [0, 3, 4, 5]:
+            return True
+
+        if self._type in [1, 2]:
+            onoff = "01" if self._use_backlight else "00"
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '37c8c8' + onoff + 'aa', 'utf-8'))
+            return conn.make_request(14, str2b, True)
+
+        return False
 
     def sendSetLights(self, conn, boilOrLight = '01', rgb1 = '0000ff'): # 00 - boil light    01 - backlight
-        answ = False
-        if self._type == 0 or self._type == 3 or self._type == 4 or self._type == 5:
-            answ = True
-        if self._type == 1 or self._type == 2:
+        if self._type in [0, 3, 4, 5]:
+            return True
+
+        if self._type in [1, 2]:
             rgb_mid = rgb1
             rgb2 = rgb1
+
             if boilOrLight == "00":
                 scale_light = ['28', '46', '64']
             else:
                 scale_light = ['00', '32', '64']
-            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._iter) + '32' + boilOrLight + scale_light[0] + self._rand + rgb1 + scale_light[1] + self._rand + rgb_mid + scale_light[2] + self._rand + rgb2 + 'aa', 'utf-8'))
-            if conn.make_request(14, str2b):
-                self.iterase()
-                answ = True
-        return answ
 
-### composite methods
+            str2b = binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + '32' + boilOrLight + scale_light[0] + self._rand + rgb1 + scale_light[1] + self._rand + rgb_mid + scale_light[2] + self._rand + rgb2 + 'aa', 'utf-8'))
+            return conn.make_request(14, str2b, True)
+
+        return False
+
+    ### composite methods
     def startNightColor(self, i=0):
         answ = False
         try:
             with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        offed = False
-                        if self._status == '02':
-                            if self.sendOff(conn):
-                                offed = True
-                        else:
+                if self.sendAuth(conn):
+                    offed = False
+                    if self._status == '02':
+                        if self.sendOff(conn):
                             offed = True
-                        if offed:
-                            if self.sendSetLights(conn, '01', self._rgb1):
-                                if self.sendMode(conn, '03', '00'):
-                                    if self.sendOn(conn):
-                                        if self.sendStatus(conn):
-                                            self._time_upd = time.strftime("%H:%M")
-                                            answ = True
-        except:
-            pass
-        if not answ:
-            i=i+1
-            if i<5:
-                answ = self.startNightColor(i)
-            else:
-                _LOGGER.warning('five attempts of startNightColor failed')
-        return answ
-
-    async def async_startNightColor(self):
-        await self.hass.async_add_executor_job(self.startNightColor)
-
-    def modeOn(self, mode = "00", temp = "00", i=0):
-        answ = False
-        try:
-            with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        offed = False
-                        if self._status == '02':
-                            if self.sendOff(conn):
-                                offed = True
-                        else:
-                            offed = True
-                        if offed:
-                            if self.sendMode(conn, mode, temp):
+                    else:
+                        offed = True
+                    if offed:
+                        if self.sendSetLights(conn, '01', self._rgb1):
+                            if self.sendMode(conn, '03', '00'):
                                 if self.sendOn(conn):
                                     if self.sendStatus(conn):
                                         self._time_upd = time.strftime("%H:%M")
                                         answ = True
         except:
             pass
-        if not answ:
-            i=i+1
-            if i<5:
-                answ = self.modeOn(mode,temp,i)
-            else:
-                _LOGGER.warning('five attempts of modeOn failed')
+
         return answ
+
+    async def async_startNightColor(self):
+        await self.hass.async_add_executor_job(self.startNightColor)
+
+    def modeOn(self, mode = "00", temp = "00", i = 0):
+        try:
+            with self._conn as conn:
+                if self.sendAuth(conn):
+                    offed = False
+                    if self._status == '02':
+                        if self.sendOff(conn):
+                            offed = True
+                    else:
+                        offed = True
+
+                    if offed and self.sendMode(conn, mode, temp) and self.sendOn(conn) and self.sendStatus(conn):
+                        self._time_upd = time.strftime("%H:%M")
+                        return True
+        except:
+            pass
+
+        return False
 
     async def async_modeOn(self, mode = "00", temp = "00"):
         await self.hass.async_add_executor_job(partial(self.modeOn, mode, temp, 0))
@@ -531,28 +484,22 @@ class RedmondKettler:
         answ = False
         try:
             with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        offed = False
-                        if self._status != '00':
-                            if self.sendOff(conn):
-                                offed = True
-                        else:
+                if self.sendAuth(conn):
+                    offed = False
+                    if self._status != '00':
+                        if self.sendOff(conn):
                             offed = True
-                        if offed:
-                            if self.sendModeCook(conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat):
-                                if self.sendOn(conn):
-                                    if self.sendStatus(conn):
-                                        self._time_upd = time.strftime("%H:%M")
-                                        answ = True
+                    else:
+                        offed = True
+                    if offed:
+                        if self.sendModeCook(conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat):
+                            if self.sendOn(conn):
+                                if self.sendStatus(conn):
+                                    self._time_upd = time.strftime("%H:%M")
+                                    answ = True
         except:
             pass
-        if not answ:
-            i=i+1
-            if i<5:
-                answ = self.modeOnCook(prog, sprog, temp, hours, minutes, dhours, dminutes, heat, i)
-            else:
-                _LOGGER.warning('five attempts of modeOn failed')
+
         return answ
 
     async def async_modeOnCook(self, prog, sprog, temp, hours, minutes, dhours='00', dminutes='00', heat = '01'):
@@ -562,20 +509,14 @@ class RedmondKettler:
         answ = False
         try:
             with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        if self.sendTempCook(conn, temp):
-                            if self.sendStatus(conn):
-                                self._time_upd = time.strftime("%H:%M")
-                                answ = True
+                if self.sendAuth(conn):
+                    if self.sendTempCook(conn, temp):
+                        if self.sendStatus(conn):
+                            self._time_upd = time.strftime("%H:%M")
+                            answ = True
         except:
             pass
-        if not answ:
-            i=i+1
-            if i<5:
-                answ = self.modeTempCook(temp, i)
-            else:
-                _LOGGER.warning('five attempts of modeTempCook failed')
+
         return answ
 
     async def async_modeTempCook(self, temp):
@@ -585,23 +526,17 @@ class RedmondKettler:
         answ = False
         try:
             with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        if self.sendTempCook(conn, speed):
-                            if self.sendAfterSpeed(conn):
-                                if self._status == '00':
-                                    answ1 = self.sendOn(conn)
-                                if self.sendStatus(conn):
-                                    self._time_upd = time.strftime("%H:%M")
-                                    answ = True
+                if self.sendAuth(conn):
+                    if self.sendTempCook(conn, speed):
+                        if self.sendAfterSpeed(conn):
+                            if self._status == '00':
+                                answ1 = self.sendOn(conn)
+                            if self.sendStatus(conn):
+                                self._time_upd = time.strftime("%H:%M")
+                                answ = True
         except:
             pass
-        if not answ:
-            i=i+1
-            if i<5:
-                answ = self.modeFan(speed, i)
-            else:
-                _LOGGER.warning('five attempts of modeFan failed')
+
         return answ
 
     async def async_modeFan(self, speed):
@@ -611,20 +546,14 @@ class RedmondKettler:
         answ = False
         try:
             with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        if self.sendIonCmd(conn, onoff):
-                            if self.sendStatus(conn):
-                                self._time_upd = time.strftime("%H:%M")
-                                answ = True
+                if self.sendAuth(conn):
+                    if self.sendIonCmd(conn, onoff):
+                        if self.sendStatus(conn):
+                            self._time_upd = time.strftime("%H:%M")
+                            answ = True
         except:
             pass
-        if not answ:
-            i=i+1
-            if i<5:
-                answ = self.modeIon(onoff, i)
-            else:
-                _LOGGER.warning('five attempts of modeIon failed')
+
         return answ
 
     async def async_modeIon(self, onoff):
@@ -634,12 +563,11 @@ class RedmondKettler:
         answ = False
         try:
             with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        if self.sendTimerCook(conn, hours, minutes):
-                            if self.sendStatus(conn):
-                                self._time_upd = time.strftime("%H:%M")
-                                answ = True
+                if self.sendAuth(conn):
+                    if self.sendTimerCook(conn, hours, minutes):
+                        if self.sendStatus(conn):
+                            self._time_upd = time.strftime("%H:%M")
+                            answ = True
         except:
             pass
         if not answ:
@@ -657,52 +585,38 @@ class RedmondKettler:
         answ = False
         try:
             with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        if self.sendOff(conn):
-                            if self.sendStatus(conn):
-                                self._time_upd = time.strftime("%H:%M")
-                                answ = True
+                if self.sendAuth(conn):
+                    if self.sendOff(conn):
+                        if self.sendStatus(conn):
+                            self._time_upd = time.strftime("%H:%M")
+                            answ = True
         except:
             pass
-        if not answ:
-            i=i+1
-            if i<5:
-                answ = self.modeOff(i)
-            else:
-                _LOGGER.warning('five attempts of modeOff failed')
+
         return answ
 
     async def async_modeOff(self):
         await self.hass.async_add_executor_job(self.modeOff)
 
-    def firstConnect(self, i=0):
+    def firstConnect(self, i = 0):
         self.findType()
-        iter = 0
         self._connected = False
-        answ = False
+
         try:
             with self._conn as conn:
-                while iter < 10:  # 10 attempts to auth
-                    if self.sendResponse(conn):
-                        if self.sendAuth(conn):
-                            break
-                    sleep(1)
-                    iter+=1
+                for i in range(10): # 10 attempts to auth
+                    if self.sendAuth(conn):
+                        break
+                    time.sleep(1)
+
                 if self._connected:
-                    if self.sendUseBackLight(conn):
-                        if self.sendSync(conn):
-                            if self.sendStatus(conn):
-                                self._time_upd = time.strftime("%H:%M")
-                                answ = True
-        except:
-            pass
-        if not answ:
-            i=i+1
-            if i<5:
-                self.firstConnect(i)
-            else:
-                _LOGGER.warning('five attempts of firstConnect failed')
+                    if self.sendUseBackLight(conn) and self.sendSync(conn) and self.sendStatus(conn):
+                        self._time_upd = time.strftime("%H:%M")
+                        return True
+        except BaseException as ex:
+            _LOGGER.exception(ex)
+
+        return False
 
     async def async_firstConnect(self):
         await self.hass.async_add_executor_job(self.firstConnect)
@@ -710,9 +624,7 @@ class RedmondKettler:
     def findType(self):
         #try:
         match_result = search(r'hci([\d]+)', self._device)
-        if match_result is None:
-            pass
-        else:
+        if match_result is not None:
             iface = int(match_result.group(1))
             scanner = btle.Scanner(iface=iface)
             ble_devices = {device.addr:str(device.getValueText(9)) for device in scanner.scan(3.0)}
@@ -727,20 +639,14 @@ class RedmondKettler:
         answ = False
         try:
             with self._conn as conn:
-                if self.sendResponse(conn):
-                    if self.sendAuth(conn):
-                        if self.sendSync(conn):
-                            if self.sendStatus(conn):
-                                self._time_upd = time.strftime("%H:%M")
-                                answ = True
+                if self.sendAuth(conn):
+                    if self.sendSync(conn):
+                        if self.sendStatus(conn):
+                            self._time_upd = time.strftime("%H:%M")
+                            answ = True
         except:
             pass
-        if not answ:
-            i=i+1
-            if i<5:
-                answ = self.modeUpdate(i)
-            else:
-                _LOGGER.warning('five attempts of modeUpdate failed')
+
         return answ
 
     async def async_modeUpdate(self):

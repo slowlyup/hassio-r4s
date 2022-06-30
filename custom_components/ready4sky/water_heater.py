@@ -76,9 +76,10 @@ class RedmondWaterHeater(WaterHeaterEntity):
         self._temp = self._kettler._temp
         self._tgtemp = self._kettler._tgtemp
         self._co = STATE_OFF
-        if self._kettler._mode == '00' or self._kettler._mode == '01':
-            if self._kettler._status == '02':
-                self._co = STATE_ELECTRIC
+
+        if self._kettler._status == '02' and self._kettler._mode in ['00', '01']:
+            self._co = STATE_ELECTRIC
+
         self.schedule_update_ha_state()
 
     @property
@@ -128,10 +129,9 @@ class RedmondWaterHeater(WaterHeaterEntity):
 
     async def async_set_operation_mode(self, operation_mode):
         if operation_mode == STATE_ELECTRIC:
-            if self._temp is None:
+            if self._temp is None or self._tgtemp is None:
                 return
-            if self._tgtemp is None:
-                return
+
             if self._tgtemp == 100:
                 await self._kettler.async_modeOn()
             else:
@@ -141,8 +141,10 @@ class RedmondWaterHeater(WaterHeaterEntity):
 
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs.get(ATTR_TEMPERATURE)
+
         if temperature is None:
             return
+
         self._tgtemp = temperature
         await self.async_set_operation_mode(STATE_ELECTRIC)
 
