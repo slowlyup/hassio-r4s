@@ -26,6 +26,8 @@ key | description
 **password (Required)** | the password to your kettler, HEX formt 8 byte (пароль для подключения к чайнику, должен быть в HEX формате, длиной 8 байт), воспользуйтесь https://www.online-toolz.com/tools/text-hex-convertor.php
 **scan_interval (Optional)** | The polling interval in seconds. The default is 60. Please note that at Rasberberry it led to a load on the module and periodic dumps. You can experimentally set the time interval that suits you. (Время между опросами BLE устройства в секундах. По умолчанию 60 секунд. Учтите, что на Raspberry PI  это приводило к повышению нагрузки)
 
+После указания параметров, нажмите подтвердить. Переведите устройстро в режим "спаривание" и нажмите подтвердить, в слудующем окне, должен произойти коннект.
+
 ## Installation instructions
 
 <p>After installation, in the UI go to the settings page, then to integrations. There click/tap on the plus button and select Redmond SkyKettle integration. Fill all the fields. No more need to reboot. You must see new inactive water heater, sensor and light elements. Hold down the button on the kettle until the LEDs flash rapidly. Turn on redmondauthorize switch.
@@ -53,6 +55,11 @@ this configuration works out of the box with hassio. In any other configuration,
 [exampleimg2]: 02.jpg
 [exampleimg3]: 03.jpg
 [exampleimg4]: 04.jpg
+
+
+Подлючение чайника Redmond RK-G200S
+скачать
+
 
 ***What's new:***
 
