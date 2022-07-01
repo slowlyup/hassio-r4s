@@ -110,6 +110,8 @@ class BTLEConnection(btle.DefaultDelegate):
         btle.DefaultDelegate.__init__(self)
 
         self._conn = None
+        self._countConn = 0
+        self._ready = True
         self._mac = mac
         self._iface = 0
         self._iter = 0
@@ -120,35 +122,43 @@ class BTLEConnection(btle.DefaultDelegate):
             self._iface = int(match_result.group(1))
 
     def __enter__(self, i = 0):
-        self.disconnect()
+        self._countConn += 1
 
-        try:
-            self._conn = btle.Peripheral(deviceAddr=self._mac, addrType=btle.ADDR_TYPE_RANDOM, iface=self._iface)
-            self._conn.withDelegate(self)
-        except BaseException as ex:
-            i += 1
+        if self._conn is None:
+            try:
+                self._conn = btle.Peripheral(deviceAddr=self._mac, addrType=btle.ADDR_TYPE_RANDOM, iface=self._iface)
+                self._conn.withDelegate(self)
+            except btle.BTLEException as ex:
+                i += 1
 
-            if i < 5:
-                time.sleep(1)
-                return self.__enter__(i)
-            else:
-                _LOGGER.error('unable to connect to device')
-                _LOGGER.exception(e)
-                self.disconnect()
+                if i < 5:
+                    time.sleep(1)
+                    return self.__enter__(i)
+                else:
+                    _LOGGER.error('unable to connect to device')
+                    _LOGGER.exception(ex)
+                    self.disconnect(True)
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disconnect()
 
-    def disconnect(self):
-        try:
-            if self._conn is not None:
-                self._conn.disconnect()
-                self._conn = None
-        except:
-            pass
-        self._conn = None
+    def disconnect(self, force = False):
+        if self._countConn == 1:
+            try:
+                if self._conn is not None:
+                    self._conn.disconnect()
+            except btle.BTLEException as ex:
+                _LOGGER.error('disconect failed')
+                _LOGGER.exception(ex)
+
+        if self._countConn == 1 or force:
+            self._conn = None
+            self._countConn = 0
+            self._iter = 0
+        else:
+            self._countConn -= 1
 
     def handleNotification(self, handle, data):
         if handle in self._callbacks:
@@ -161,19 +171,28 @@ class BTLEConnection(btle.DefaultDelegate):
     def set_callback(self, handle, function):
         self._callbacks[handle] = function
 
-    def make_request(self, handle, value, nextInter=False, with_response=True):
+    def make_request(self, handle, value, nextInter=False, withResponse=True):
+        answ = False
+
+        while not self._ready:
+            continue
+
         try:
-            self._conn.writeCharacteristic(handle, value, withResponse=with_response)
+            self._ready = False
+            self._conn.writeCharacteristic(handle, value, withResponse)
             self._conn.waitForNotifications(2.0)
+
             if nextInter:
                 self._iter = 0 if self._iter > 99 else self._iter + 1
 
-            return True
-        except BaseException as ex:
+            answ = True
+        except btle.BTLEException as ex:
             _LOGGER.error('not send request %s', inspect.getouterframes(inspect.currentframe(), 2)[1][3])
             _LOGGER.exception(ex)
 
-        return False
+        self._ready = True
+
+        return answ
 
 class RedmondKettler:
 
@@ -298,11 +317,15 @@ class RedmondKettler:
         return char
 
     def sendResponse(self, conn):
-        if self._connected:
-            return conn.make_request(12, binascii.a2b_hex(bytes('0100', 'utf-8')))
-        return False
+        if self._conn._conn is None:
+            return False
+
+        return conn.make_request(12, binascii.a2b_hex(bytes('0100', 'utf-8')))
 
     def sendAuth(self, conn):
+        if self._conn._countConn > 1:
+            return True
+
         return self.sendResponse(conn) and conn.make_request(14, binascii.a2b_hex(bytes('55' + self.decToHex(self._conn._iter) + 'ff' + self._key + 'aa', 'utf-8')), True)
 
     def sendOn(self,conn):
@@ -433,7 +456,6 @@ class RedmondKettler:
 
     ### composite methods
     def startNightColor(self, i=0):
-        answ = False
         try:
             with self._conn as conn:
                 if self.sendAuth(conn):
@@ -443,17 +465,18 @@ class RedmondKettler:
                             offed = True
                     else:
                         offed = True
+
                     if offed:
                         if self.sendSetLights(conn, '01', self._rgb1):
                             if self.sendMode(conn, '03', '00'):
                                 if self.sendOn(conn):
                                     if self.sendStatus(conn):
                                         self._time_upd = time.strftime("%H:%M")
-                                        answ = True
+                                        return True
         except:
             pass
 
-        return answ
+        return False
 
     async def async_startNightColor(self):
         await self.hass.async_add_executor_job(self.startNightColor)
