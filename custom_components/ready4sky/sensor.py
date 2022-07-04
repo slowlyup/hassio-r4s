@@ -6,6 +6,14 @@ from homeassistant.const import CONF_MAC
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
+ATTR_WATTS = 'energy spent'
+ATTR_ALLTIME = 'time working'
+ATTR_TIMES = 'amount of starts'
+ATTR_WATTS_MEASURE = 'kW * h'
+ATTR_ALLTIME_MEASURE = 'h'
+ATTR_TIMES_MEASURE = 'times'
+ATTR_SYNC = 'sync'
+
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -16,7 +24,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         async_add_entities([RedmondCooker(kettler)], True)
 
 class RedmondSensor(Entity):
-
     def __init__(self, kettler):
         self._kettler = kettler
         self._name = 'Status ' + self._kettler._name
@@ -74,12 +81,17 @@ class RedmondSensor(Entity):
 
     @property
     def extra_state_attributes(self):
-        attributes = {'sync':self._sync}
-        return attributes
+        return {
+            ATTR_TIMES: str(self._kettler._times) + " " + ATTR_TIMES_MEASURE,
+            ATTR_WATTS: str(round(self._kettler._Watts / 1000, 2)) + " " + ATTR_WATTS_MEASURE,
+            ATTR_ALLTIME: str(self._kettler._alltime) + " " + ATTR_ALLTIME_MEASURE,
+            ATTR_SYNC: self._sync
+        }
 
     @property
     def unique_id(self):
         return f'{DOMAIN}[{self._kettler._mac}][{self._name}]'
+
 
 class RedmondCooker(Entity):
 
@@ -109,8 +121,8 @@ class RedmondCooker(Entity):
             self._state = 'DELAYED START'
 
         self._sync = str(self._kettler._time_upd)
-        self._timer_prog = str(self._kettler._ph)+':'+str(self._kettler._pm)
-        self._timer_curr = str(self._kettler._th)+':'+str(self._kettler._tm)
+        self._timer_prog = str(self._kettler._ph) + ':' + str(self._kettler._pm)
+        self._timer_curr = str(self._kettler._th) + ':' + str(self._kettler._tm)
 
         self.schedule_update_ha_state()
 

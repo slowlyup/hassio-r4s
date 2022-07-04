@@ -13,6 +13,7 @@ from re import search
 from subprocess import check_output
 from re import match as matches
 from voluptuous import Schema, Required, Optional, In
+import secrets
 
 CONF_USE_BACKLIGHT = 'use_backlight'
 
@@ -29,7 +30,7 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         self._hci_devices = {}
         self._ble_devices = {}
-        self._use_backlight = {True:True, False:False}
+        self._use_backlight = {True: 'Yes', False: 'No'}
         self.get_devices()
         self.data = {}
 
@@ -44,7 +45,7 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def show_form(self, user_input={}, errors={}):
         device = user_input.get(CONF_DEVICE, DEFAULT_DEVICE)
         mac = user_input.get(CONF_MAC)
-        password = user_input.get(CONF_PASSWORD)
+        password = user_input.get(CONF_PASSWORD, secrets.token_hex(8))
         scan_interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         backlight = user_input.get(CONF_USE_BACKLIGHT, DEFAULT_USE_BACKLIGHT)
         SCHEMA = Schema({
