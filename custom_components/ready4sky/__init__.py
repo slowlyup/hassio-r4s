@@ -84,7 +84,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     return True
 
-async def async_unload_entry(hass:HomeAssistant, entry:ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         for component in SUPPORTED_DOMAINS:
             await hass.config_entries.async_forward_entry_unload(entry, component)
@@ -139,7 +139,7 @@ class BTLEConnection(btle.DefaultDelegate):
     def sendAuth(self):
         return self.sendResponseAllow() and self.make_request(14, '55' + str(self._iter).zfill(2) + 'ff' + self._key + 'aa')
 
-    def disconnect(self, force = False):
+    def disconnect(self, force= False):
         if self._countConn == 1 or force:
             try:
                 if self._conn is not None:
@@ -161,9 +161,9 @@ class BTLEConnection(btle.DefaultDelegate):
         # sendAuth
         if handle == 11 and arrData[2] == 'ff':
             if self._type in [0, 1, 3, 4, 5] and arrData[3] == '01':
-                return None  # ok
+                pass  # ok
             elif self._type == 2 and arrData[3] == '02':
-                return None  # ok
+                pass  # ok
             else:
                 raise btle.BTLEInternalError('error auth')
 
@@ -348,7 +348,7 @@ class RedmondKettler:
                 return True
 
             now = int(time.time())
-            offset = time.timezone * -1
+            offset = time.timezone * -1 + 3600
 
             now = "".join(list(reversed(wrap(self.decToHex(now), 2))))
             offset = "".join(list(reversed(wrap(self.decToHex(offset), 2))))
@@ -425,9 +425,12 @@ class RedmondKettler:
     def sendUseBackLight(self, conn):
         if self._type in [0, 3, 4, 5]:
             return True
+        
+        onoff = "00"
 
         if self._type in [1, 2]:
-            onoff = "01" if self._use_backlight else "00"
+            if self._use_backlight:
+                onoff = "01"
             return conn.make_request(14, '55' + self.decToHex(self._conn._iter) + '37c8c8' + onoff + 'aa')
 
         return False

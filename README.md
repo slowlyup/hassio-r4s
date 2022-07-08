@@ -4,13 +4,10 @@
 
 Allows you to connect Redmond SkyKettle, SkyCooker and SkyHeat to your Home Assistant
 
-Full list of supported devices see in: https://github.com/mavrikkk/ha_kettler/blob/master/custom_components/ready4sky/r4sconst.py.
+Full list of supported devices see in: /custom_components/ready4sky/r4sconst.py
 
-After every update remove integration from HA and then add it again!
-
-После обновления модуля лучше удалить интеграцию из интерфейса HA и заново добавить ее.
-
-**[WARNING]** У меня из устройств, только чайник Redmond RK-G200S, правки по остальным дейвайсам можно предложить через Pull Request
+**Support confirmed:**
+- RK-G200S - firmware 4.21
 
 ### Configuration:
 
