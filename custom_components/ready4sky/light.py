@@ -84,10 +84,10 @@ class RedmondLight(LightEntity):
 
         self._kettler._rgb1 = self._kettler.hs_to_rgbhex(self._hs)
 
-        await self._kettler.async_startNightColor()
+        await self._kettler.startNightColor()
 
     async def async_turn_off(self, **kwargs):
-        await self._kettler.async_modeOff()
+        await self._kettler.modeOff()
 
     @property
     def unique_id(self):

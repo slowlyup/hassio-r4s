@@ -1,6 +1,9 @@
 from . import DOMAIN
-from datetime import timedelta
+from .btle import BTLEConnection, DEFAULT_ADAPTER
+
 from homeassistant import config_entries
+from homeassistant.core import callback
+from homeassistant.helpers import config_validation
 from homeassistant.const import (
     CONF_DEVICE,
     CONF_MAC,
@@ -8,53 +11,55 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL
 )
 
-from bluepy.btle import Scanner
-from re import search
-from subprocess import check_output
-from re import match as matches
 from voluptuous import Schema, Required, Optional, In
+
+from datetime import timedelta
 import secrets
 
-CONF_USE_BACKLIGHT = 'use_backlight'
 
-DEFAULT_DEVICE = "hci0"
+CONF_USE_BACKLIGHT = 'use_backlight'
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_USE_BACKLIGHT = True
 
-#@config_entries.HANDLERS.register(DOMAIN)
+# @config_entries.HANDLERS.register(DOMAIN)
 class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self):
+        self.data = {}
         self._hci_devices = {}
         self._ble_devices = {}
-        self._use_backlight = {True: 'Yes', False: 'No'}
-        self.get_devices()
-        self.data = {}
 
     async def async_step_user(self, user_input={}):
         if user_input:
             return await self.check_valid(user_input)
-        return self.show_form()
+        return await self.show_form()
 
     async def async_step_info(self, user_input={}):
         return await self.create_entryS()
 
-    def show_form(self, user_input={}, errors={}):
-        device = user_input.get(CONF_DEVICE, DEFAULT_DEVICE)
-        mac = user_input.get(CONF_MAC)
+    async def show_form(self, user_input={}, errors={}):
+        hciDevices = BTLEConnection.getIfaces()
+        bleDevices = await BTLEConnection.getDiscoverDevices()
+        for address in bleDevices:
+            if address.replace(':', '') != bleDevices[address].replace('-', ''):
+                bleDevices[address] += ' (' + address + ')'
+
+        device = user_input.get(CONF_DEVICE, DEFAULT_ADAPTER)
+        mac = str(user_input.get(CONF_MAC)).upper()
         password = user_input.get(CONF_PASSWORD, secrets.token_hex(8))
         scan_interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         backlight = user_input.get(CONF_USE_BACKLIGHT, DEFAULT_USE_BACKLIGHT)
+
         SCHEMA = Schema({
-            Required(CONF_DEVICE, default=device): In(self._hci_devices),
-            Required(CONF_MAC, default=mac): In(self._ble_devices),
+            Required(CONF_DEVICE, default=device): In(hciDevices),
+            Required(CONF_MAC, default=mac): In(bleDevices),
             Required(CONF_PASSWORD, default=password): str,
             Optional(CONF_SCAN_INTERVAL, default=scan_interval): int,
-            Optional(CONF_USE_BACKLIGHT, default=backlight): In(self._use_backlight)
+            Optional(CONF_USE_BACKLIGHT, default=backlight): config_validation.boolean
         })
+
         return self.async_show_form(
             step_id='user', data_schema=SCHEMA, errors=errors
         )
@@ -79,7 +84,7 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason='already_configured')
 
         if len(password) != 16:
-            return self.show_form(
+            return await self.show_form(
                 user_input=user_input,
                 errors={
                     'base': 'wrong_password'
@@ -87,33 +92,17 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         if scan_interval < 10 or scan_interval > 300:
-            return self.show_form(
+            return await self.show_form(
                 user_input=user_input,
                 errors={
                     'base': 'wrong_scan_interval'
                 }
             )
         self.data = user_input
+
         return self.show_form_info()
 
-    def get_devices(self):
-        first_hci = 'hci0'
-        try:
-            byte_output = check_output(['hciconfig'])
-            string_output = byte_output.decode('utf-8')
-            lines = string_output.splitlines()
-            hci_devices = [line.split(':')[0] for line in lines if 'hci' in line]
-            self._hci_devices = {line:line for line in hci_devices}
-            first_hci = hci_devices[0]
-        except:
-            self._hci_devices = {'hci0':'hci0'}
-        try:
-            match_result = search(r'hci([\d]+)', first_hci)
-            if match_result is None:
-                pass
-            else:
-                iface = int(match_result.group(1))
-                scanner = Scanner(iface=iface)
-                self._ble_devices = {str(device.addr):str(device.getValueText(9)) + ', ' + str(device.addr) for device in scanner.scan(5.0)}
-        except:
-            pass
+    @staticmethod
+    @callback
+    def async_get_options_flow(entry):
+        return RedmondKettlerConfigFlow(entry=entry)

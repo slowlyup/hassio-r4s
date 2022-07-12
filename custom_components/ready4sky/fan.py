@@ -61,13 +61,13 @@ class RedmondFan(FanEntity):
 #            await self.async_turn_off()
 #        else:
 #            speed = percentage_to_ordered_list_item(ORDERED_NAMED_FAN_SPEEDS, percentage)
-#            await self._kettler.async_modeFan(speed)
-       
+#            await self._kettler.modeFan(speed)
+
     async def async_set_speed(self, speed: str) -> None:
         if speed == '00':
-            await self._kettler.async_modeOff()
+            await self._kettler.modeOff()
         else:
-            await self._kettler.async_modeFan(speed)
+            await self._kettler.modeFan(speed)
             
     async def async_turn_on(self, speed: str = None, percentage: int = None, preset_mode: str = None, **kwargs,) -> None:
         if speed is not None:
@@ -80,7 +80,7 @@ class RedmondFan(FanEntity):
 #            await self.async_set_percentage(0)
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self._kettler.async_modeOff()
+        await self._kettler.modeOff()
             
     
     @property

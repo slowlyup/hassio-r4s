@@ -7,7 +7,9 @@ Allows you to connect Redmond SkyKettle, SkyCooker and SkyHeat to your Home Assi
 Full list of supported devices see in: /custom_components/ready4sky/r4sconst.py
 
 **Support confirmed:**
-- RK-G200S - firmware 4.21
+- RK-G200S - firmware v4.21
+
+---
 
 ### Configuration:
 
@@ -27,9 +29,10 @@ key | description
 
 ## Installation instructions
 
-<p>After installation, in the UI go to the settings page, then to integrations. There click/tap on the plus button and select Redmond SkyKettle integration. Fill all the fields. No more need to reboot. You must see new inactive water heater, sensor and light elements. Hold down the button on the kettle until the LEDs flash rapidly. Turn on redmondauthorize switch.
+En: After installation, go to the settings > integrations > plus > ready4sky.
+Fill all the fields. No more need to reboot. You must see new inactive water heater, sensor and light elements. Hold down the button on the kettle until the LEDs flash rapidly. Turn on redmondauthorize switch.
 
-(После установки, в пользовательском интерфейсе зайдите на старницу настроек, затем в Интеграции. Там нажмите на кнопку со знаком "+" и выберите интеграцию Redmond SkyKettle. Заполните все поля. Больше нет нужды в перезагрузке. Вы должны увидеть новые неактивные элементы water heater, sensor и light. Удерживайте кнопку на чайнике до тех пор, пока светодиоды не начнут часто мигать. Включите переключатель redmondauthorize. ).</p>
+Ru: После установки, в пользовательском интерфейсе зайдите на старницу настроек, затем в Интеграции. Там нажмите на кнопку со знаком "+" и выберите интеграцию Redmond SkyKettle. Заполните все поля. Больше нет нужды в перезагрузке. Вы должны увидеть новые неактивные элементы water heater, sensor и light. Удерживайте кнопку на чайнике до тех пор, пока светодиоды не начнут часто мигать. Включите переключатель redmondauthorize.
 
 
 **WARNING**
@@ -60,6 +63,13 @@ this configuration works out of the box with hassio. In any other configuration,
 
 ***What's new:***
 
+2022-07-12
+ - support HA 2022.7.x
+ - use bleak (remove bluepy)
+ - add attributes: watts, runs, time work
+ - hex password autogen
+ - fix config option backlight save value
+
 2022-07-01
 - Fix connect to last firmaware protocol RK-G200S. 
 - optimization and improved stability
@@ -77,17 +87,11 @@ this configuration works out of the box with hassio. In any other configuration,
 
 2020/05/14 Minor bug fixes and improvements. integration some other models. add Cooker!
 
-2020/05/06 Minor bug fixes and improvements. integration some other models. The name of the device is the model of kettle. Removed Authorize switch. Autorization is in the config flow. Turn on or turn off backlight is in the config flow !!!ATTENTION!!! In this version, some functions are cut down (there are no statistics on power-ups and energy costs, there is no HOLD mode)
+2020/05/06 Minor bug fixes and improvements. integration some other models. The name of the device is the model of kettle. Removed Authorize switch. Autorization is in the config flow. Turn on or turn off backlight is in the config flow
 
-Мелкие исправления и улучшения. Частичная интеграции других моделей чайников. Имя устройства соответствует модели вашего чайника. Убран элемент authorize. Авторизация встроена в первоначальную настройку. В первоначальную настройку добавлена возможность включения или отключения постоянной подсветки. !!!ВНИМАНИЕ!!! Все также урезано часть функций (нет статистики включений и затрат электроэнергии, нет режима Поддерживать)
+2020/04/30 Now the integration finds all the bluetooth devices during connection and offers to select it from the list. Minor bug fixes and improvements. Preparing for the integration of other models.
 
-2020/04/30 Now the integration finds all the bluetooth devices during connection and offers to select it from the list. Minor bug fixes and improvements. Preparing for the integration of other models. !!!ATTENTION!!! In this version, some functions are cut down (there are no statistics on power-ups and energy costs, there is no way to turn off the kettle's backlight, there is no HOLD mode)
-
-Теперь интеграция при подключении сама находит все устройства bluetooth и предлагает выбрать из списка. Мелкие исправления и улучшения. Подготовка к интеграции других моделей чайников !!!ВНИМАНИЕ!!! Все также урезано часть функций (нет статистики включений и затрат электроэнергии, нет возможности отключить подсветку чайника, нет режима Поддерживать)
-
-2020/04/24 complete revision of the code. Replacing "pexpect" library with "bluepy". Instead of an interactive mode, full support for subscribing to notifications. !!!ATTENTION!!! In the new version, some functions are cut down (there are no statistics on power-ups and energy costs, there is no way to turn off the kettle's backlight, there is no HOLD mode)
-
-Полный пересмотр кода. Замена библиотеки pexpect на bluepy. Вместо интерактивного режима работы полная поддержка подписки на уведомления. !!!ВНИМАНИЕ!!! В новой версии урезано часть функций (нет статистики включений и затрат электроэнергии, нет возможности отключить подсветку чайника, нет режима Поддерживать)
+2020/04/24 complete revision of the code. Replacing "pexpect" library with "bluepy". Instead of an interactive mode, full support for subscribing to notifications.
 
 2020/04/09 yaml configuration has been replaced with config flow (thanks to https://github.com/fantomnotabene). Now you can add/remove entry via UI without HA restart, able to change entity_id for each entity to your desired
 

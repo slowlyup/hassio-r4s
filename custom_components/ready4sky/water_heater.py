@@ -133,11 +133,11 @@ class RedmondWaterHeater(WaterHeaterEntity):
                 return
 
             if self._tgtemp == 100:
-                await self._kettler.async_modeOn()
+                await self._kettler.modeOn()
             else:
-                await self._kettler.async_modeOn("01", self._kettler.decToHex(self._tgtemp))
+                await self._kettler.modeOn("01", self._kettler.decToHex(self._tgtemp))
         elif operation_mode == STATE_OFF:
-            await self._kettler.async_modeOff()
+            await self._kettler.modeOff()
 
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs.get(ATTR_TEMPERATURE)
@@ -248,10 +248,10 @@ class RedmondCooker(WaterHeaterEntity):
 
     async def async_set_operation_mode(self, operation_mode):
         if operation_mode == STATE_OFF:
-            await self._kettler.async_modeOff()
+            await self._kettler.modeOff()
         else:
             program = COOKER_PROGRAMS[operation_mode]
-            await self._kettler.async_modeOnCook(program[0],program[1],program[2],program[3],program[4],program[5],program[6],program[7])
+            await self._kettler.modeOnCook(program[0],program[1],program[2],program[3],program[4],program[5],program[6],program[7])
 
     async def async_set_manual_program(self, prog=None, subprog=None, temp=None, hours=None, minutes=None, dhours=None, dminutes=None, heat=None):
         if prog == None or subprog == None or temp == None or hours == None or minutes == None or dhours == None or dminutes == None or heat == None:
@@ -265,7 +265,7 @@ class RedmondCooker(WaterHeaterEntity):
             dhoursh = self._kettler.decToHex(dhours)
             dminutesh = self._kettler.decToHex(dminutes)
             heath = self._kettler.decToHex(heat)
-            await self._kettler.async_modeOnCook(progh,subprogh,temph,hoursh,minutesh,dhoursh,dminutesh,heath)
+            await self._kettler.modeOnCook(progh,subprogh,temph,hoursh,minutesh,dhoursh,dminutesh,heath)
         except:
             pass
 
@@ -275,7 +275,7 @@ class RedmondCooker(WaterHeaterEntity):
         try:
             hoursh = self._kettler.decToHex(hours)
             minutesh = self._kettler.decToHex(minutes)
-            await self._kettler.async_modeTimeCook(hoursh,minutesh)
+            await self._kettler.modeTimeCook(hoursh,minutesh)
         except:
             pass
 
@@ -283,7 +283,7 @@ class RedmondCooker(WaterHeaterEntity):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
-        await self._kettler.async_modeTempCook(self._kettler.decToHex(temperature))
+        await self._kettler.modeTempCook(self._kettler.decToHex(temperature))
 
     @property
     def min_temp(self):

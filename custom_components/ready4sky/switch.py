@@ -61,10 +61,10 @@ class RedmondSwitch(SwitchEntity):
         return True
 
     async def async_turn_on(self, **kwargs):
-        await self._kettler.async_modeOn()
+        await self._kettler.modeOn()
 
     async def async_turn_off(self, **kwargs):
-        await self._kettler.async_modeOff()
+        await self._kettler.modeOff()
 
     @property
     def unique_id(self):
@@ -121,10 +121,10 @@ class RedmondSwitchIon(SwitchEntity):
         return True
 
     async def async_turn_on(self, **kwargs):
-        await self._kettler.async_modeIon('01')
+        await self._kettler.modeIon('01')
 
     async def async_turn_off(self, **kwargs):
-        await self._kettler.async_modeIon('00')
+        await self._kettler.modeIon('00')
 
     @property
     def unique_id(self):
