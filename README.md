@@ -66,7 +66,7 @@ switch:
     switches:
       switch_kettle_<anyname>:
         friendly_name: "Kettle"
-        value_template: "{{ is_state('sensor.status_<name sensor from HA>', 'BOIL') }}"
+        value_template: "{{ states('sensor.status_<name sensor from HA>') != 'OFF' }}"
         turn_on:
           service: water_heater.turn_on
           target:
@@ -79,7 +79,7 @@ switch:
 
 **Debug log enable**
 
-add in ``configuration.yaml`
+add in `configuration.yaml`
 
 ```
 logger:
