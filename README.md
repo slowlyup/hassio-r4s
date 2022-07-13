@@ -77,6 +77,19 @@ switch:
             entity_id: water_heater.kettle_<name sensor from HA>
 ```
 
+**Debug log enable**
+
+add in ``configuration.yaml`
+
+```
+logger:
+  default: critical
+  logs:
+    custom_components.ready4sky: debug
+    bleak.backends.bluezdbus.client: debug
+```
+
+
 ***What's new:***
 
 2022-07-12
