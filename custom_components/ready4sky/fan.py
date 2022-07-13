@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from . import DOMAIN
+from . import DOMAIN, SIGNAL_UPDATE_DATA
 
 #from homeassistant.util.percentage import (
 #    ordered_list_item_to_percentage,
@@ -18,16 +18,12 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 #ORDERED_NAMED_FAN_SPEEDS = ['01', '02', '03', '04', '05', '06']  # off is not included
 
 
-
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
     if kettler._type == 3:
         async_add_entities([RedmondFan(kettler)], True)
 
-        
-        
 class RedmondFan(FanEntity):
-
     def __init__(self, kettler):
         self._name = 'Fan ' + kettler._name
         self._icon = 'mdi:fan'
@@ -36,11 +32,9 @@ class RedmondFan(FanEntity):
         #self._perc = 0
         self._speed = '01'
 
-
-
     async def async_added_to_hass(self):
         self._handle_update()
-        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, 'ready4skyupdate', self._handle_update))
+        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
         self._ison = False
@@ -68,7 +62,7 @@ class RedmondFan(FanEntity):
             await self._kettler.modeOff()
         else:
             await self._kettler.modeFan(speed)
-            
+
     async def async_turn_on(self, speed: str = None, percentage: int = None, preset_mode: str = None, **kwargs,) -> None:
         if speed is not None:
             await self.async_set_speed(speed)

@@ -1,14 +1,13 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from . import DOMAIN
+from . import DOMAIN, SIGNAL_UPDATE_DATA
 
 import voluptuous as vol
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.components.water_heater import (
     WaterHeaterEntity,
-    SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_OPERATION_MODE,
+    WaterHeaterEntityFeature,
     STATE_ELECTRIC,
     ATTR_TEMPERATURE
 )
@@ -19,8 +18,6 @@ from homeassistant.const import (
     CONF_MAC
 )
 from homeassistant.helpers import entity_platform
-
-###
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 import logging
@@ -40,11 +37,10 @@ from homeassistant.helpers.entity_component import EntityComponent
 from .r4sconst import COOKER_PROGRAMS
 
 _LOGGER = logging.getLogger(__name__)
-###
 
 OPERATION_LIST = [STATE_OFF, STATE_ELECTRIC]
-SUPPORT_FLAGS_HEATER = (SUPPORT_TARGET_TEMPERATURE | SUPPORT_OPERATION_MODE)
-COOKER_OPERATION_LIST = [program for program,value in COOKER_PROGRAMS.items()]
+SUPPORT_FLAGS_HEATER = WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeaterEntityFeature.OPERATION_MODE
+COOKER_OPERATION_LIST = [program for program, value in COOKER_PROGRAMS.items()]
 COOKER_OPERATION_LIST.append(STATE_OFF)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -59,7 +55,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         platform.async_register_entity_service("set_manual_program",{vol.Required("prog"): vol.All(vol.Coerce(int), vol.Range(min=0, max=12)), vol.Required("subprog"): vol.All(vol.Coerce(int), vol.Range(min=0, max=3)),vol.Required("temp"): vol.All(vol.Coerce(int), vol.Range(min=30, max=180)), vol.Required("hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)), vol.Required("dhours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),vol.Required("dminutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)), vol.Required("heat"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1))},"async_set_manual_program",)
 
 class RedmondWaterHeater(WaterHeaterEntity):
-
     def __init__(self, kettler):
         self._name = 'Kettle ' + kettler._name
         self._icon = 'mdi:kettle'
@@ -70,7 +65,7 @@ class RedmondWaterHeater(WaterHeaterEntity):
 
     async def async_added_to_hass(self):
         self._handle_update()
-        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, 'ready4skyupdate', self._handle_update))
+        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
         self._temp = self._kettler._temp
@@ -149,10 +144,10 @@ class RedmondWaterHeater(WaterHeaterEntity):
         await self.async_set_operation_mode(STATE_ELECTRIC)
 
     async def async_turn_on(self):
-        self.async_set_operation_mode(STATE_ELECTRIC)
+        await self.async_set_operation_mode(STATE_ELECTRIC)
 
     async def async_turn_off(self):
-        self.async_set_operation_mode(STATE_OFF)
+        await self.async_set_operation_mode(STATE_OFF)
 
     @property
     def min_temp(self):
@@ -189,7 +184,7 @@ class RedmondCooker(WaterHeaterEntity):
 
     async def async_added_to_hass(self):
         self._handle_update()
-        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, 'ready4skyupdate', self._handle_update))
+        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
         self._tgtemp = self._kettler._tgtemp

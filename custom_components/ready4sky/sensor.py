@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from . import DOMAIN
+from . import DOMAIN, SIGNAL_UPDATE_DATA
 from homeassistant.const import CONF_MAC
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -33,7 +33,7 @@ class RedmondSensor(Entity):
 
     async def async_added_to_hass(self):
         self._handle_update()
-        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, 'ready4skyupdate', self._handle_update))
+        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
         self._state = 'OFF'
@@ -106,7 +106,7 @@ class RedmondCooker(Entity):
 
     async def async_added_to_hass(self):
         self._handle_update()
-        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, 'ready4skyupdate', self._handle_update))
+        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
         self._state = 'OFF'

@@ -27,14 +27,7 @@ from homeassistant.const import (
 from .r4sconst import SUPPORTED_DEVICES
 from .btle import BTLEConnection
 
-CONF_USE_BACKLIGHT = 'use_backlight'
-
-CONF_MIN_TEMP = 40
-CONF_MAX_TEMP = 100
-CONF_TARGET_TEMP = 100
-
-_LOGGER = logging.getLogger(__name__)
-
+DOMAIN = "ready4sky"
 SUPPORTED_DOMAINS = [
     "water_heater",
     "sensor",
@@ -42,8 +35,15 @@ SUPPORTED_DOMAINS = [
     "switch",
     "fan"
 ]
+SIGNAL_UPDATE_DATA = 'ready4skyupdate'
 
-DOMAIN = "ready4sky"
+CONF_USE_BACKLIGHT = 'use_backlight'
+
+CONF_MIN_TEMP = 40
+CONF_MAX_TEMP = 100
+CONF_TARGET_TEMP = 100
+
+_LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass, config):
     hass.data.setdefault(DOMAIN, {})
@@ -122,65 +122,20 @@ class RedmondKettler:
         self._th = 0  #  timer hours
         self._tm = 0  #  timer min
         self._ion = '00'  # 00 - off   01 - on
+        self._conn = BTLEConnection(self._mac, self._key, self._adapter)
+        self.initCallbacks()
 
     async def setNameAndType(self):
-        self._conn = BTLEConnection(self._mac, self._key, self._adapter)
-        self._conn.set_callback(10, self.handle_notification)
-
         await self._conn.setNameAndType()
         self._type = self._conn._type
         self._name = self._conn._name
 
-    def handle_notification(self, arr):
+    def initCallbacks(self):
         # sendOn, sendOff, sendMode, sendSync, sendSetLights, sendGetLights, sendUseBacklight
-        if arr[2] in ['03', '04', '6e', '32', '33', '37']:
-            pass
-
-        # sendStatus
-        elif arr[2] == '06':
-            if self._type == 0:
-                self._temp = self.hexToDec(str(arr[13]))
-                self._status = str(arr[11])
-                self._mode = str(arr[3])
-                tgtemp = str(arr[5])
-                if tgtemp != '00':
-                    self._tgtemp = self.hexToDec(tgtemp)
-                else:
-                    self._tgtemp = 100
-            elif self._type in [1, 2]:
-                self._temp = self.hexToDec(str(arr[8]))
-                self._status = str(arr[11])
-                self._mode = str(arr[3])
-                tgtemp = str(arr[5])
-                if tgtemp != '00':
-                    self._tgtemp = self.hexToDec(tgtemp)
-                else:
-                    self._tgtemp = 100
-            elif self._type == 3:
-                self._status = str(arr[11])
-                self._mode = str(arr[5])
-                self._ion = str(arr[14])
-            elif self._type == 4:
-                self._status = str(arr[11])
-                self._mode = str(arr[3])
-            elif self._type == 5:
-                self._prog = str(arr[3])
-                self._sprog = str(arr[4])
-                self._temp = self.hexToDec(str(arr[5]))
-                self._tgtemp = self.hexToDec(str(arr[5]))
-                self._ph = self.hexToDec(str(arr[6]))
-                self._pm = self.hexToDec(str(arr[7]))
-                self._th = self.hexToDec(str(arr[8]))
-                self._tm = self.hexToDec(str(arr[9]))
-                self._mode = str(arr[10])
-                self._status = str(arr[11])
-        elif arr[2] == '47':  # state watt
-            self._Watts = self.hexToDec(str(arr[11] + arr[10] + arr[9]))  # in Watts
-            self._alltime = round(self._Watts / 2200, 1)  # in hours
-        elif arr[2] == '50':  # state time
-            self._times = self.hexToDec(str(arr[7] + arr[6]))
-
-        async_dispatcher_send(self.hass, 'ready4skyupdate')
+        # ['03', '04', '05', '6e', '32', '33', '37']
+        self._conn.setCallback('06', self.responseStatus)
+        self._conn.setCallback('47', self.responseStat)
+        self._conn.setCallback('50', self.responseStat)
 
     def calcMidColor(self, rgb1, rgb2):
         try:
@@ -212,48 +167,92 @@ class RedmondKettler:
             return True
 
         if self._type in [1, 2, 3, 4, 5]:
-            return await conn.make_request('55' + self.decToHex(self._conn._iter) + '03aa')
+            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '03aa')
 
         return False
 
     async def sendOff(self, conn):
-        return conn.make_request('55' + self.decToHex(self._conn._iter) + '04aa')
+        return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '04aa')
 
     async def sendSyncDateTime(self, conn):
         if self._type in [0, 3, 4, 5]:
             return True
 
         if self._type in [1, 2]:
-            if not self._use_backlight:
-                return True
-
             now = int(time.time())
             offset = time.timezone * -1
 
             now = "".join(list(reversed(wrap(self.decToHex(now), 2))))
             offset = "".join(list(reversed(wrap(self.decToHex(offset), 2))))
 
-            return await conn.make_request('55' + self.decToHex(self._conn._iter) + '6e' + now + offset + '0000aa')
+            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '6e' + now + offset + '0000aa')
 
         return False
 
     async def sendStat(self, conn):
-        if await conn.make_request('55' + self.decToHex(self._conn._iter) + '4700aa'):
-            if await conn.make_request('55' + self.decToHex(self._conn._iter) + '5000aa'):
+        if await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '4700aa'):
+            if await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '5000aa'):
                 return True
         return False
 
+    def responseStat(self, arrHex):
+        if arrHex[2] == '47':  # state watt
+            self._Watts = self.hexToDec(str(arrHex[11] + arrHex[10] + arrHex[9]))  # in Watts
+            self._alltime = round(self._Watts / 2200, 1)  # in hours
+        elif arrHex[2] == '50':  # state time
+            self._times = self.hexToDec(str(arrHex[7] + arrHex[6]))
+
     async def sendStatus(self, conn):
-        if await conn.make_request('55' + self.decToHex(self._conn._iter) + '06aa'):
-            self._time_upd = time.strftime("%H:%M")
+        if await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '06aa'):
             return True
 
         return False
 
+    def responseStatus(self, arrHex):
+        if self._type == 0:
+            self._temp = self.hexToDec(str(arrHex[13]))
+            self._status = str(arrHex[11])
+            self._mode = str(arrHex[3])
+            tgtemp = str(arrHex[5])
+            if tgtemp != '00':
+                self._tgtemp = self.hexToDec(tgtemp)
+            else:
+                self._tgtemp = 100
+        elif self._type in [1, 2]:
+            self._temp = self.hexToDec(str(arrHex[8]))
+            self._status = str(arrHex[11])
+            self._mode = str(arrHex[3])
+            tgtemp = str(arrHex[5])
+            if tgtemp != '00':
+                self._tgtemp = self.hexToDec(tgtemp)
+            else:
+                self._tgtemp = 100
+        elif self._type == 3:
+            self._status = str(arrHex[11])
+            self._mode = str(arrHex[5])
+            self._ion = str(arrHex[14])
+        elif self._type == 4:
+            self._status = str(arrHex[11])
+            self._mode = str(arrHex[3])
+        elif self._type == 5:
+            self._prog = str(arrHex[3])
+            self._sprog = str(arrHex[4])
+            self._temp = self.hexToDec(str(arrHex[5]))
+            self._tgtemp = self.hexToDec(str(arrHex[5]))
+            self._ph = self.hexToDec(str(arrHex[6]))
+            self._pm = self.hexToDec(str(arrHex[7]))
+            self._th = self.hexToDec(str(arrHex[8]))
+            self._tm = self.hexToDec(str(arrHex[9]))
+            self._mode = str(arrHex[10])
+            self._status = str(arrHex[11])
+
+        self._time_upd = time.strftime("%H:%M")
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE_DATA)
+
     # 00 - boil
     # 01 - heat
-    # temp 03 - backlight (boil by default)
-    # temp - in HEX
+    # 03 - backlight (boil by default)
+    # temp - temp or rgb in HEX
     async def sendMode(self, conn, mode, temp):
         if self._type in [3, 4, 5]:
             return True
@@ -263,12 +262,12 @@ class RedmondKettler:
         elif self._type in [1, 2]:
             str2b = '55' + self.decToHex(self._conn._iter) + '05' + mode + '00' + temp + '00000000000000000000800000aa'
 
-        return await conn.make_request(str2b)
+        return await conn.makeRequest(str2b)
 
     async def sendModeCook(self, conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat):
         if self._type == 5:
             str2b = '55' + self.decToHex(self._conn._iter) + '05' + prog + sprog + temp + hours + minutes + dhours + dminutes + heat + 'aa'
-            return await conn.make_request(str2b)
+            return await conn.makeRequest(str2b)
         else:
             return True
 
@@ -276,7 +275,7 @@ class RedmondKettler:
 
     async def sendTimerCook(self, conn, hours, minutes):
         if self._type == 5:
-            return await conn.make_request('55' + self.decToHex(self._conn._iter) + '0c' + hours + minutes + 'aa')
+            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '0c' + hours + minutes + 'aa')
         else:
             return True
 
@@ -284,7 +283,7 @@ class RedmondKettler:
 
     async def sendTempCook(self, conn, temp):  #temp in HEX or speed 00-06
         if self._type in [3, 5]:
-            return await conn.make_request('55' + self.decToHex(self._conn._iter) + '0b' + temp + 'aa')
+            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '0b' + temp + 'aa')
         else:
             return True
 
@@ -292,13 +291,13 @@ class RedmondKettler:
 
     async def sendIonCmd(self, conn, onoff):  #00-off 01-on
         if self._type == 3:
-            return await conn.make_request('55' + self.decToHex(self._conn._iter) + '1b' + onoff + 'aa', True)
+            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '1b' + onoff + 'aa', True)
 
         return True
 
     async def sendAfterSpeed(self, conn):
         if self._type == 3:
-            return await conn.make_request('55' + self.decToHex(self._conn._iter) + '0900aa', True)
+            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '0900aa', True)
 
         return True
 
@@ -311,7 +310,7 @@ class RedmondKettler:
             if self._use_backlight:
                 onoff = "01"
 
-            return await conn.make_request('55' + self.decToHex(self._conn._iter) + '37c8c8' + onoff + 'aa')
+            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '37c8c8' + onoff + 'aa')
 
         return False
 
@@ -328,8 +327,7 @@ class RedmondKettler:
             else:
                 scale_light = ['00', '32', '64']
 
-            str2b = '55' + self.decToHex(self._conn._iter) + '32' + boilOrLight + scale_light[0] + self._rand + rgb1 + scale_light[1] + self._rand + rgb_mid + scale_light[2] + self._rand + rgb2 + 'aa'
-            return conn.make_request(str2b, True)
+            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '32' + boilOrLight + scale_light[0] + self._rand + rgb1 + scale_light[1] + self._rand + rgb_mid + scale_light[2] + self._rand + rgb2 + 'aa')
 
         return False
 
@@ -461,10 +459,10 @@ class RedmondKettler:
         return False
 
     async def firstConnect(self):
+        _LOGGER.debug('FIRST CONNECT')
+
         async with self._conn as conn:
-            if await self.sendUseBackLight(conn):
-                if await self.sendSyncDateTime(conn):
-                    if await self.sendStat(conn):
-                        return True
+            if await self.sendUseBackLight(conn) and await self.update(1):
+                    return True
 
         return False

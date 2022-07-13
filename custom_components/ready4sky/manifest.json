@@ -1,10 +1,10 @@
 {
   "domain": "ready4sky",
   "name": "ready4sky",
-  "version": "1.0",
+  "version": "1.5",
   "documentation": "https://github.com/XNicON/hassio-r4s/blob/master/README.md",
   "dependencies": [],
-  "codeowners": ["@mavrikk"],
-  "requirements": ["bluepy"],
+  "codeowners": ["@mavrikk", "@XNicON"],
+  "requirements": ["bleak"],
   "config_flow": true
 }

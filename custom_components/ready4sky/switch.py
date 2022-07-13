@@ -24,7 +24,7 @@ class RedmondSwitch(SwitchEntity):
 
     async def async_added_to_hass(self):
         self._handle_update()
-        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, 'ready4skyupdate', self._handle_update))
+        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
         self._ison = False
@@ -84,7 +84,7 @@ class RedmondSwitchIon(SwitchEntity):
 
     async def async_added_to_hass(self):
         self._handle_update()
-        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, 'ready4skyupdate', self._handle_update))
+        self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
         self._ison = False

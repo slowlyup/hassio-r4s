@@ -57,9 +57,25 @@ this configuration works out of the box with hassio. In any other configuration,
 [exampleimg4]: 04.jpg
 
 
-Подлючение чайника Redmond RK-G200S
-скачать
+**Google Home / Alexa / HomeKit / Yandex Alisa integration**
 
+create switch, simple add in ``configuration.yaml``, replace text from "< >"
+```
+switch:
+  - platform: template
+    switches:
+      switch_kettle_<anyname>:
+        friendly_name: "Kettle"
+        value_template: "{{ is_state('sensor.status_<name sensor from HA>', 'BOIL') }}"
+        turn_on:
+          service: water_heater.turn_on
+          target:
+            entity_id: water_heater.kettle_<name sensor from HA>
+        turn_off:
+          service: water_heater.turn_off
+          target:
+            entity_id: water_heater.kettle_<name sensor from HA>
+```
 
 ***What's new:***
 

@@ -1,4 +1,4 @@
-from . import DOMAIN
+from . import DOMAIN, CONF_USE_BACKLIGHT
 from .btle import BTLEConnection, DEFAULT_ADAPTER
 
 from homeassistant import config_entries
@@ -16,8 +16,6 @@ from voluptuous import Schema, Required, Optional, In
 from datetime import timedelta
 import secrets
 
-
-CONF_USE_BACKLIGHT = 'use_backlight'
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_USE_BACKLIGHT = True
 
