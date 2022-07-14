@@ -122,7 +122,6 @@ class BTLEConnection:
 
         try:
             await self._conn.write_gatt_char(UART_RX_CHAR_UUID, binascii.a2b_hex(bytes(value, 'utf-8')), True)
-            self.nextIter()
 
             return True
         except BleakError as ex:
@@ -131,11 +130,20 @@ class BTLEConnection:
 
         return False
 
-    def nextIter(self):
+    def hexToDec(self, hexStr) -> int:
+        return int.from_bytes(binascii.a2b_hex(bytes(hexStr, 'utf-8')), 'little')
+
+    def decToHex(self, num) -> str:
+        return num.to_bytes((num.bit_length() + 7) // 8, 'little').hex() or '00'
+
+    def getHexNextIter(self) -> str:
+        current = self._iter
         self._iter = 0 if self._iter > 254 else self._iter + 1
 
+        return self.decToHex(current)
+
     async def sendAuth(self):
-        await self.makeRequest('55' + str(self._iter).zfill(2) + 'ff' + self._key + 'aa')
+        await self.makeRequest('55' + self.getHexNextIter() + 'ff' + self._key + 'aa')
         await asyncio.sleep(1.0)
 
         if not self._auth:

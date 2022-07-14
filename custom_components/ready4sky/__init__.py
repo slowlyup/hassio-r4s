@@ -157,53 +157,53 @@ class RedmondKettler:
         return color_util.color_rgb_to_hex(*rgb)
 
     def hexToDec(self, chr) -> int:
-        return int(str(chr), 16)
+        return self._conn.hexToDec(chr)
 
     def decToHex(self, num) -> str:
-        return hex(int(num))[2:].zfill(2)
+        return self._conn.decToHex(num)
+
+    def getHexNextIter(self) -> str:
+        return self._conn.getHexNextIter()
 
     async def sendOn(self, conn):
         if self._type == 0:
             return True
 
         if self._type in [1, 2, 3, 4, 5]:
-            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '03aa')
+            return await conn.makeRequest('55' + self.getHexNextIter() + '03aa')
 
         return False
 
     async def sendOff(self, conn):
-        return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '04aa')
+        return await conn.makeRequest('55' + self.getHexNextIter() + '04aa')
 
     async def sendSyncDateTime(self, conn):
         if self._type in [0, 3, 4, 5]:
             return True
 
         if self._type in [1, 2]:
-            now = int(time.time())
-            offset = time.timezone * -1
+            now = self.decToHex(int(time.time()))
+            offset = self.decToHex(time.timezone * -1)
 
-            now = "".join(list(reversed(wrap(self.decToHex(now), 2))))
-            offset = "".join(list(reversed(wrap(self.decToHex(offset), 2))))
-
-            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '6e' + now + offset + '0000aa')
+            return await conn.makeRequest('55' + self.getHexNextIter() + '6e' + now + offset + '0000aa')
 
         return False
 
     async def sendStat(self, conn):
-        if await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '4700aa'):
-            if await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '5000aa'):
+        if await conn.makeRequest('55' + self.getHexNextIter() + '4700aa'):
+            if await conn.makeRequest('55' + self.getHexNextIter() + '5000aa'):
                 return True
         return False
 
     def responseStat(self, arrHex):
         if arrHex[2] == '47':  # state watt
-            self._Watts = self.hexToDec(str(arrHex[11] + arrHex[10] + arrHex[9]))  # in Watts
+            self._Watts = self.hexToDec(str(arrHex[9] + arrHex[10] + arrHex[11]))  # in Watts
             self._alltime = round(self._Watts / 2200, 1)  # in hours
         elif arrHex[2] == '50':  # state time
-            self._times = self.hexToDec(str(arrHex[7] + arrHex[6]))
+            self._times = self.hexToDec(str(arrHex[6] + arrHex[7]))
 
     async def sendStatus(self, conn):
-        if await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '06aa'):
+        if await conn.makeRequest('55' + self.getHexNextIter() + '06aa'):
             return True
 
         return False
@@ -258,15 +258,15 @@ class RedmondKettler:
             return True
 
         if self._type == 0:
-            str2b = '55' + self.decToHex(self._conn._iter) + '05' + mode + '00' + temp + '00aa'
+            str2b = '55' + self.getHexNextIter() + '05' + mode + '00' + temp + '00aa'
         elif self._type in [1, 2]:
-            str2b = '55' + self.decToHex(self._conn._iter) + '05' + mode + '00' + temp + '00000000000000000000800000aa'
+            str2b = '55' + self.getHexNextIter() + '05' + mode + '00' + temp + '00000000000000000000800000aa'
 
         return await conn.makeRequest(str2b)
 
     async def sendModeCook(self, conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat):
         if self._type == 5:
-            str2b = '55' + self.decToHex(self._conn._iter) + '05' + prog + sprog + temp + hours + minutes + dhours + dminutes + heat + 'aa'
+            str2b = '55' + self.getHexNextIter() + '05' + prog + sprog + temp + hours + minutes + dhours + dminutes + heat + 'aa'
             return await conn.makeRequest(str2b)
         else:
             return True
@@ -275,7 +275,7 @@ class RedmondKettler:
 
     async def sendTimerCook(self, conn, hours, minutes):
         if self._type == 5:
-            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '0c' + hours + minutes + 'aa')
+            return await conn.makeRequest('55' + self.getHexNextIter() + '0c' + hours + minutes + 'aa')
         else:
             return True
 
@@ -283,7 +283,7 @@ class RedmondKettler:
 
     async def sendTempCook(self, conn, temp):  #temp in HEX or speed 00-06
         if self._type in [3, 5]:
-            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '0b' + temp + 'aa')
+            return await conn.makeRequest('55' + self.getHexNextIter() + '0b' + temp + 'aa')
         else:
             return True
 
@@ -291,13 +291,13 @@ class RedmondKettler:
 
     async def sendIonCmd(self, conn, onoff):  #00-off 01-on
         if self._type == 3:
-            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '1b' + onoff + 'aa', True)
+            return await conn.makeRequest('55' + self.getHexNextIter() + '1b' + onoff + 'aa', True)
 
         return True
 
     async def sendAfterSpeed(self, conn):
         if self._type == 3:
-            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '0900aa', True)
+            return await conn.makeRequest('55' + self.getHexNextIter() + '0900aa', True)
 
         return True
 
@@ -310,7 +310,7 @@ class RedmondKettler:
             if self._use_backlight:
                 onoff = "01"
 
-            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '37c8c8' + onoff + 'aa')
+            return await conn.makeRequest('55' + self.getHexNextIter() + '37c8c8' + onoff + 'aa')
 
         return False
 
@@ -327,7 +327,7 @@ class RedmondKettler:
             else:
                 scale_light = ['00', '32', '64']
 
-            return await conn.makeRequest('55' + self.decToHex(self._conn._iter) + '32' + boilOrLight + scale_light[0] + self._rand + rgb1 + scale_light[1] + self._rand + rgb_mid + scale_light[2] + self._rand + rgb2 + 'aa')
+            return await conn.makeRequest('55' + self.getHexNextIter() + '32' + boilOrLight + scale_light[0] + self._rand + rgb1 + scale_light[1] + self._rand + rgb_mid + scale_light[2] + self._rand + rgb2 + 'aa')
 
         return False
 
