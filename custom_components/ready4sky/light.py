@@ -8,8 +8,11 @@ from homeassistant.const import CONF_MAC
 from homeassistant.components.light import (
     ATTR_RGB_COLOR,
     ATTR_HS_COLOR,
+    ATTR_BRIGHTNESS,
+
     SUPPORT_COLOR,
-    LightEntity
+
+    LightEntity,
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -20,7 +23,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         async_add_entities([RedmondLight(kettler)], True)
 
 class RedmondLight(LightEntity):
-
     def __init__(self, kettler):
         self._name = 'Light ' + kettler._name
         self._hs = (0, 0)
@@ -75,13 +77,16 @@ class RedmondLight(LightEntity):
         return self._hs
 
     @property
+    def brightness(self):
+        return self._kettler._nightlight_brightness
+
+    @property
     def supported_features(self):
         return SUPPORT_COLOR
 
     async def async_turn_on(self, **kwargs):
-        if ATTR_HS_COLOR in kwargs:
-            self._hs = kwargs[ATTR_HS_COLOR]
-
+        self._hs = kwargs.get(ATTR_HS_COLOR, self._hs)
+        self._kettler._nightlight_brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
         self._kettler._rgb1 = self._kettler.hs_to_rgbhex(self._hs)
 
         await self._kettler.startNightColor()

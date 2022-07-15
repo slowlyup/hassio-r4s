@@ -110,9 +110,9 @@ class RedmondKettler:
         self._times = 0
         self._time_upd = '00:00'
         self._boiltime = '80'
+        self._nightlight_brightness = 255
         self._rgb1 = '0000ff'
         self._rgb2 = 'ff0000'
-        self._rand = '5e'
         self._mode = '00'  # '00' - boil, '01' - heat to temp, '03' - backlight  for cooker 00 - heat after cook   01 - off after cook        for fan 00-06 - speed 
         self._status = '00'  #may be '00' - OFF or '02' - ON         for cooker 00 - off   01 - setup program   02 - on  04 - heat   05 - delayed start
         self._prog = '00'  #  program
@@ -314,39 +314,36 @@ class RedmondKettler:
 
         return False
 
-    async def sendSetLights(self, conn, boilOrLight='01', rgb1='0000ff'):  # 00 - boil light    01 - backlight
+    async def sendSetLights(self, conn, boilOrLight='01', rgb1='0000ff'):  # 00 - boil light  01 - backlight
         if self._type in [0, 3, 4, 5]:
             return True
 
         if self._type in [1, 2]:
             rgb_mid = rgb1
             rgb2 = rgb1
+            bright = self.decToHex(self._nightlight_brightness)
 
             if boilOrLight == "00":
                 scale_light = ['28', '46', '64']
             else:
                 scale_light = ['00', '32', '64']
 
-            return await conn.makeRequest('55' + self.getHexNextIter() + '32' + boilOrLight + scale_light[0] + self._rand + rgb1 + scale_light[1] + self._rand + rgb_mid + scale_light[2] + self._rand + rgb2 + 'aa')
+            return await conn.makeRequest('55' + self.getHexNextIter() + '32' + boilOrLight + scale_light[0] + bright + rgb1 + scale_light[1] + bright + rgb_mid + scale_light[2] + bright + rgb2 + 'aa')
 
         return False
 
     async def startNightColor(self):
         try:
            async with self._conn as conn:
-                offed = False
-                if self._status == '02':
-                    if self.sendOff(conn):
-                        offed = True
-                else:
-                    offed = True
+            isOff = True
+            if self._status == '02' and self._mode != '03':
+                isOff = await self.sendOff(conn)
 
-                if offed:
-                    if await self.sendSetLights(conn, '01', self._rgb1):
-                        if await self.sendMode(conn, '03', '00'):
-                            if await self.sendOn(conn):
-                                if await self.sendStatus(conn):
-                                    return True
+            if isOff and await self.sendSetLights(conn, '01', self._rgb1):
+                if await self.sendMode(conn, '03', '00'):
+                    if await self.sendOn(conn):
+                        if await self.sendStatus(conn):
+                            return True
         except:
             pass
 

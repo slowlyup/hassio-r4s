@@ -20,15 +20,15 @@ UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 class BTLEConnection:
     def __init__(self, mac, key, device):
-        self._conn = None
         self._type = None
-        self._auth = None
+        self._auth = False
         self._name = ''
         self._mac = mac
         self._key = key
         self._adapter = device
         self._iter = 0
         self._callbacks = {}
+        self._conn = BleakClient(self._mac, adapter=self._adapter)
 
         self.setCallback('ff', self.responseAuth)
 
@@ -43,9 +43,6 @@ class BTLEConnection:
         return self
 
     async def __aenter__(self):
-        if not self._conn:
-            self._conn = BleakClient(self._mac, adapter=self._adapter)
-
         for i in range(3):
             isConnected = self._conn.is_connected
 
@@ -63,11 +60,11 @@ class BTLEConnection:
                 _LOGGER.error('Unable to connect')
                 _LOGGER.exception(ex)
 
-                if i == 2:
-                    await self.disconnect(True)
-                    raise ex
-                else:
+                if i < 2:
                     await asyncio.sleep(1 + i)
+                else:
+                    await self.disconnect()
+                    raise ex
 
         return self
 
@@ -88,18 +85,15 @@ class BTLEConnection:
         devices = await BleakScanner.discover(timeout, adapter=iface)
         return {str(device.address): str(device.name) for device in devices}
 
-    async def disconnect(self, force=False):
-        await asyncio.sleep(2.0)
-        if force or not self._conn and not self._conn.is_connected:
-            try:
-                if self._conn is not None:
-                    await self._conn.disconnect()
+    async def disconnect(self):
+        try:
+            await asyncio.sleep(2.0)
+            await self._conn.disconnect()
 
-                self._conn = None
-                self._iter = 0
-            except BaseException as ex:
-                _LOGGER.error('disconect failed')
-                _LOGGER.exception(ex)
+            self._iter = 0
+        except BaseException as ex:
+            _LOGGER.error('disconect failed')
+            _LOGGER.exception(ex)
 
     def handleNotification(self, handle, data):
         arrData = wrap(binascii.b2a_hex(data).decode("utf-8"), 2)
