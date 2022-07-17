@@ -28,9 +28,8 @@ class BTLEConnection:
         self._adapter = device
         self._iter = 0
         self._callbacks = {}
+        self._afterConnectCallback = None
         self._conn = BleakClient(self._mac, adapter=self._adapter)
-
-        self.setCallback('ff', self.responseAuth)
 
     async def setNameAndType(self):
         bleDevices = await self.getDiscoverDevices(self._adapter)
@@ -54,7 +53,7 @@ class BTLEConnection:
             try:
                 await self._conn.connect()
                 await self._conn.start_notify(UART_TX_CHAR_UUID, self.handleNotification)
-                await self.sendAuth()
+                await self.connectAfter()
                 break
             except BaseException as ex:
                 _LOGGER.error('Unable to connect')
@@ -69,8 +68,8 @@ class BTLEConnection:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        #await self.disconnect()
-        pass
+        if self._iter > 254:
+            await self.disconnect()
 
     @staticmethod
     def getIfaces():
@@ -124,6 +123,9 @@ class BTLEConnection:
 
         return False
 
+    async def sendRequest(self, cmdHex, dataHex):
+        return await self.makeRequest('55' + self.getHexNextIter() + cmdHex + dataHex + 'aa')
+
     def hexToDec(self, hexStr) -> int:
         return int.from_bytes(binascii.a2b_hex(bytes(hexStr, 'utf-8')), 'little')
 
@@ -136,21 +138,9 @@ class BTLEConnection:
 
         return self.decToHex(current)
 
-    async def sendAuth(self):
-        await self.makeRequest('55' + self.getHexNextIter() + 'ff' + self._key + 'aa')
-        await asyncio.sleep(1.0)
+    async def connectAfter(self):
+        if self._afterConnectCallback is not None:
+            await self._afterConnectCallback()
 
-        if not self._auth:
-            raise BleakError('error auth')
-
-        return True
-
-    def responseAuth(self, arrayHex):
-        if self._type in [0, 1, 3, 4, 5] and arrayHex[3] == '01':
-            self._auth = True
-        elif self._type == 2 and arrayHex[3] == '02':
-            self._auth = True
-        else:
-            self._auth = False
-
-        return self._auth
+    def setConnectAfter(self, func):
+        self._afterConnectCallback = func

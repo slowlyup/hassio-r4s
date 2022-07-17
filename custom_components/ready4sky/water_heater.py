@@ -170,11 +170,7 @@ class RedmondWaterHeater(WaterHeaterEntity):
         return f'{DOMAIN}[{self._kettler._mac}][{self._name}]'
 
 
-
-
-
 class RedmondCooker(WaterHeaterEntity):
-
     def __init__(self, kettler):
         self._name = 'Cooker ' + kettler._name
         self._icon = 'mdi:chef-hat'

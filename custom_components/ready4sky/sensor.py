@@ -6,13 +6,11 @@ from homeassistant.const import CONF_MAC
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-ATTR_WATTS = 'energy spent'
-ATTR_ALLTIME = 'time working'
-ATTR_TIMES = 'amount of starts'
-ATTR_WATTS_MEASURE = 'kW * h'
-ATTR_ALLTIME_MEASURE = 'h'
-ATTR_TIMES_MEASURE = 'times'
-ATTR_SYNC = 'sync'
+ATTR_WATTS = 'energy_alltime_kwh'
+ATTR_WORK_ALLTIME = 'working_time_h'
+ATTR_TIMES = 'number_starts'
+ATTR_FIRMWARE_VERSION = 'firmvare_version'
+ATTR_SYNC = 'last_sync'
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
@@ -82,9 +80,10 @@ class RedmondSensor(Entity):
     @property
     def extra_state_attributes(self):
         return {
-            ATTR_TIMES: str(self._kettler._times) + " " + ATTR_TIMES_MEASURE,
-            ATTR_WATTS: str(round(self._kettler._Watts / 1000, 2)) + " " + ATTR_WATTS_MEASURE,
-            ATTR_ALLTIME: str(self._kettler._alltime) + " " + ATTR_ALLTIME_MEASURE,
+            ATTR_TIMES: self._kettler._times,
+            ATTR_WATTS: round(self._kettler._Watts / 1000, 2),
+            ATTR_WORK_ALLTIME: self._kettler._alltime,
+            ATTR_FIRMWARE_VERSION: self._kettler._firmware_ver,
             ATTR_SYNC: self._sync
         }
 

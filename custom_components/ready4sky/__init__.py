@@ -93,6 +93,27 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         pass
     return True
 
+class RedmondCommand(IntEnum):
+    AUTH = 'ff'
+    VERSION = '01'
+    RUN_CURRENT_MODE = '03'  # sendOn
+    STOP_CURRENT_MODE = '04' # sendOff
+    SET_STATUS_MODE = '05' # sendMode
+    GET_STATUS_MODE = '06'
+    SET_TEMPERATURE = '07'
+    SET_DELAY = '08'
+    SET_COLOR = '32' # sendSetLights
+    GET_COLOR = '33' # sendGetLights
+    SET_BACKLIGHT_MODE = '37' # sendUseBacklight
+    SET_SOUND = '3c'
+    SET_LOCK_BUTTONS = '3e'
+    GET_STATISTICS_WATT = '47'
+    GET_STARTS_COUNT = '50'
+    SET_TIME = '6e' #sendSync
+    SET_IONIZATION = '1b'
+    SET_TIME_COOKER = '0c'
+    SET_TEMP_COOKER = '0b'
+
 
 class RedmondKettler:
     def __init__(self, hass, addr, key, device, backlight):
@@ -100,6 +121,7 @@ class RedmondKettler:
         self._mac = addr
         self._key = key
         self._adapter = device
+        self._firmware_ver = None
         self._use_backlight = backlight
         self._mntemp = CONF_MIN_TEMP
         self._mxtemp = CONF_MAX_TEMP
@@ -131,11 +153,11 @@ class RedmondKettler:
         self._name = self._conn._name
 
     def initCallbacks(self):
-        # sendOn, sendOff, sendMode, sendSync, sendSetLights, sendGetLights, sendUseBacklight
-        # ['03', '04', '05', '6e', '32', '33', '37']
-        self._conn.setCallback('06', self.responseStatus)
-        self._conn.setCallback('47', self.responseStat)
-        self._conn.setCallback('50', self.responseStat)
+        self._conn.setConnectAfter(self.sendAuth)
+        self._conn.setCallback(RedmondCommand.AUTH, self.responseAuth)
+        self._conn.setCallback(RedmondCommand.GET_STATUS_MODE, self.responseStatus)
+        self._conn.setCallback(RedmondCommand.GET_STATISTICS_WATT, self.responseStat)
+        self._conn.setCallback(RedmondCommand.GET_STARTS_COUNT, self.responseStat)
 
     def calcMidColor(self, rgb1, rgb2):
         try:
@@ -165,17 +187,42 @@ class RedmondKettler:
     def getHexNextIter(self) -> str:
         return self._conn.getHexNextIter()
 
+    async def sendAuth(self):
+        await self.sendRequest(RedmondCommand.AUTH, self._key)
+        await asyncio.sleep(1.0)
+
+        if not self._auth:
+            raise BleakError('error auth')
+
+        return True
+
+    def responseAuth(self, arrayHex):
+        if self._type in [0, 1, 3, 4, 5] and arrayHex[3] == '01':
+            self._auth = True
+        elif self._type == 2 and arrayHex[3] == '02':
+            self._auth = True
+        else:
+            self._auth = False
+
+        return self._auth
+
+    async def sendGetVersion(self, conn):
+        return await conn.sendRequest(RedmondCommand.VERSION)
+
+    async def responseVersion(self, arrHex):
+        self._firmware_ver = self.hexToDec(arrHex[3]) + '.' + self.hexToDec(arrHex[4])
+
     async def sendOn(self, conn):
         if self._type == 0:
             return True
 
         if self._type in [1, 2, 3, 4, 5]:
-            return await conn.makeRequest('55' + self.getHexNextIter() + '03aa')
+            return await conn.sendRequest(RedmondCommand.RUN_CURRENT_MODE)
 
         return False
 
     async def sendOff(self, conn):
-        return await conn.makeRequest('55' + self.getHexNextIter() + '04aa')
+        return await conn.sendRequest(RedmondCommand.STOP_CURRENT_MODE)
 
     async def sendSyncDateTime(self, conn):
         if self._type in [0, 3, 4, 5]:
@@ -185,13 +232,13 @@ class RedmondKettler:
             now = self.decToHex(int(time.time()))
             offset = self.decToHex(time.timezone * -1)
 
-            return await conn.makeRequest('55' + self.getHexNextIter() + '6e' + now + offset + '0000aa')
+            return await conn.sendRequest(RedmondCommand.SET_TIME, now + offset + '0000')
 
         return False
 
     async def sendStat(self, conn):
-        if await conn.makeRequest('55' + self.getHexNextIter() + '4700aa'):
-            if await conn.makeRequest('55' + self.getHexNextIter() + '5000aa'):
+        if await conn.sendRequest(RedmondCommand.GET_STATISTICS_WATT, '00'):
+            if await conn.sendRequest(RedmondCommand.GET_STARTS_COUNT, '00'):
                 return True
         return False
 
@@ -203,7 +250,7 @@ class RedmondKettler:
             self._times = self.hexToDec(str(arrHex[6] + arrHex[7]))
 
     async def sendStatus(self, conn):
-        if await conn.makeRequest('55' + self.getHexNextIter() + '06aa'):
+        if await conn.sendRequest(RedmondCommand.GET_STATUS_MODE):
             return True
 
         return False
@@ -258,16 +305,16 @@ class RedmondKettler:
             return True
 
         if self._type == 0:
-            str2b = '55' + self.getHexNextIter() + '05' + mode + '00' + temp + '00aa'
+            str2b = mode + '00' + temp + '00'
         elif self._type in [1, 2]:
-            str2b = '55' + self.getHexNextIter() + '05' + mode + '00' + temp + '00000000000000000000800000aa'
+            str2b = mode + '00' + temp + '00000000000000000000800000'
 
-        return await conn.makeRequest(str2b)
+        return await conn.sendRequest(RedmondCommand.SET_STATUS_MODE, str2b)
 
     async def sendModeCook(self, conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat):
         if self._type == 5:
-            str2b = '55' + self.getHexNextIter() + '05' + prog + sprog + temp + hours + minutes + dhours + dminutes + heat + 'aa'
-            return await conn.makeRequest(str2b)
+            str2b = prog + sprog + temp + hours + minutes + dhours + dminutes + heat
+            return await conn.sendRequest(RedmondCommand.SET_STATUS_MODE, str2b)
         else:
             return True
 
@@ -275,7 +322,7 @@ class RedmondKettler:
 
     async def sendTimerCook(self, conn, hours, minutes):
         if self._type == 5:
-            return await conn.makeRequest('55' + self.getHexNextIter() + '0c' + hours + minutes + 'aa')
+            return await conn.sendRequest(RedmondCommand.SET_TIME_COOKER, hours + minutes)
         else:
             return True
 
@@ -283,7 +330,7 @@ class RedmondKettler:
 
     async def sendTempCook(self, conn, temp):  #temp in HEX or speed 00-06
         if self._type in [3, 5]:
-            return await conn.makeRequest('55' + self.getHexNextIter() + '0b' + temp + 'aa')
+            return await conn.sendRequest(RedmondCommand.SET_TEMP_COOKER, temp)
         else:
             return True
 
@@ -291,7 +338,7 @@ class RedmondKettler:
 
     async def sendIonCmd(self, conn, onoff):  #00-off 01-on
         if self._type == 3:
-            return await conn.makeRequest('55' + self.getHexNextIter() + '1b' + onoff + 'aa', True)
+            return await conn.sendRequest(RedmondCommand.SET_IONIZATION, onoff)
 
         return True
 
@@ -310,7 +357,7 @@ class RedmondKettler:
             if self._use_backlight:
                 onoff = "01"
 
-            return await conn.makeRequest('55' + self.getHexNextIter() + '37c8c8' + onoff + 'aa')
+            return await conn.sendRequest(RedmondCommand.SET_BACKLIGHT_MODE, 'c8c8' + onoff)
 
         return False
 
@@ -328,7 +375,7 @@ class RedmondKettler:
             else:
                 scale_light = ['00', '32', '64']
 
-            return await conn.makeRequest('55' + self.getHexNextIter() + '32' + boilOrLight + scale_light[0] + bright + rgb1 + scale_light[1] + bright + rgb_mid + scale_light[2] + bright + rgb2 + 'aa')
+            return await conn.sendRequest(RedmondCommand.SET_COLOR, boilOrLight + scale_light[0] + bright + rgb1 + scale_light[1] + bright + rgb_mid + scale_light[2] + bright + rgb2)
 
         return False
 
@@ -459,7 +506,9 @@ class RedmondKettler:
         _LOGGER.debug('FIRST CONNECT')
 
         async with self._conn as conn:
-            if await self.sendUseBackLight(conn) and await self.update(1):
-                    return True
+            if await self.sendUseBackLight(conn):
+                if await self.sendGetVersion(conn):
+                    if await self.update(1):
+                        return True
 
         return False
