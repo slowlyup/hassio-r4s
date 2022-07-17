@@ -9,6 +9,7 @@ SUPPORTED_DEVICES = {
     'RK-G210S': 1,
     'RK-G211S': 1,
     'RK-G212S': 1,
+    'RK-G214S': 1,
     'RK-G240S': 1,
     'RK-M216S': 2,
     'RK-M216S-E': 2,

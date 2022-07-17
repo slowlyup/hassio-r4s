@@ -100,7 +100,7 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.show_form_info()
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(entry):
-        return RedmondKettlerConfigFlow(entry=entry)
+    #@staticmethod
+    #@callback
+    #def async_get_options_flow(entry):
+    #    return RedmondKettlerConfigFlow(entry=entry)
