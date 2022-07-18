@@ -21,7 +21,6 @@ UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 class BTLEConnection:
     def __init__(self, mac, key, device):
         self._type = None
-        self._auth = False
         self._name = ''
         self._mac = mac
         self._key = key
@@ -68,7 +67,7 @@ class BTLEConnection:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self._iter > 254:
+        if self._iter == 255:
             await self.disconnect()
 
     @staticmethod
@@ -107,8 +106,8 @@ class BTLEConnection:
     def mac(self):
         return self._mac
 
-    def setCallback(self, type, function):
-        self._callbacks[type] = function
+    def setCallback(self, respType, function):
+        self._callbacks[str(respType)] = function
 
     async def makeRequest(self, value):
         _LOGGER.debug('MAKE REQUEST: ' + value)
@@ -123,8 +122,8 @@ class BTLEConnection:
 
         return False
 
-    async def sendRequest(self, cmdHex, dataHex):
-        return await self.makeRequest('55' + self.getHexNextIter() + cmdHex + dataHex + 'aa')
+    async def sendRequest(self, cmdHex, dataHex = ''):
+        return await self.makeRequest('55' + self.getHexNextIter() + str(cmdHex) + dataHex + 'aa')
 
     def hexToDec(self, hexStr) -> int:
         return int.from_bytes(binascii.a2b_hex(bytes(hexStr, 'utf-8')), 'little')
@@ -140,7 +139,7 @@ class BTLEConnection:
 
     async def connectAfter(self):
         if self._afterConnectCallback is not None:
-            await self._afterConnectCallback()
+            await self._afterConnectCallback(self)
 
     def setConnectAfter(self, func):
         self._afterConnectCallback = func

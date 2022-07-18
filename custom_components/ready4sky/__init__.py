@@ -10,6 +10,7 @@ import logging
 from functools import partial
 from datetime import (timedelta)
 from textwrap import wrap
+from enum import Enum
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -93,7 +94,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         pass
     return True
 
-class RedmondCommand(IntEnum):
+class RedmondCommand(Enum): 
     AUTH = 'ff'
     VERSION = '01'
     RUN_CURRENT_MODE = '03'  # sendOn
@@ -114,6 +115,9 @@ class RedmondCommand(IntEnum):
     SET_TIME_COOKER = '0c'
     SET_TEMP_COOKER = '0b'
 
+    def __str__(self):
+        return str(self.value)
+
 
 class RedmondKettler:
     def __init__(self, hass, addr, key, device, backlight):
@@ -121,7 +125,6 @@ class RedmondKettler:
         self._mac = addr
         self._key = key
         self._adapter = device
-        self._firmware_ver = None
         self._use_backlight = backlight
         self._mntemp = CONF_MIN_TEMP
         self._mxtemp = CONF_MAX_TEMP
@@ -130,6 +133,7 @@ class RedmondKettler:
         self._Watts = 0
         self._alltime = 0
         self._times = 0
+        self._firmware_ver = None
         self._time_upd = '00:00'
         self._boiltime = '80'
         self._nightlight_brightness = 255
@@ -144,6 +148,7 @@ class RedmondKettler:
         self._th = 0  #  timer hours
         self._tm = 0  #  timer min
         self._ion = '00'  # 00 - off   01 - on
+        self._auth = False
         self._conn = BTLEConnection(self._mac, self._key, self._adapter)
         self.initCallbacks()
 
@@ -155,6 +160,7 @@ class RedmondKettler:
     def initCallbacks(self):
         self._conn.setConnectAfter(self.sendAuth)
         self._conn.setCallback(RedmondCommand.AUTH, self.responseAuth)
+        self._conn.setCallback(RedmondCommand.VERSION, self.responseGetVersion)
         self._conn.setCallback(RedmondCommand.GET_STATUS_MODE, self.responseStatus)
         self._conn.setCallback(RedmondCommand.GET_STATISTICS_WATT, self.responseStat)
         self._conn.setCallback(RedmondCommand.GET_STARTS_COUNT, self.responseStat)
@@ -187,12 +193,12 @@ class RedmondKettler:
     def getHexNextIter(self) -> str:
         return self._conn.getHexNextIter()
 
-    async def sendAuth(self):
-        await self.sendRequest(RedmondCommand.AUTH, self._key)
-        await asyncio.sleep(1.0)
+    async def sendAuth(self, conn):
+        await conn.sendRequest(RedmondCommand.AUTH, self._key)
+        await asyncio.sleep(1.5)
 
         if not self._auth:
-            raise BleakError('error auth')
+            raise Exception('error auth')
 
         return True
 
@@ -209,8 +215,8 @@ class RedmondKettler:
     async def sendGetVersion(self, conn):
         return await conn.sendRequest(RedmondCommand.VERSION)
 
-    async def responseVersion(self, arrHex):
-        self._firmware_ver = self.hexToDec(arrHex[3]) + '.' + self.hexToDec(arrHex[4])
+    def responseGetVersion(self, arrHex):
+        self._firmware_ver = str(self.hexToDec(arrHex[3])) + '.' + str(self.hexToDec(arrHex[4]))
 
     async def sendOn(self, conn):
         if self._type == 0:
