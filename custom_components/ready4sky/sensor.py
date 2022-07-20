@@ -9,7 +9,6 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 ATTR_WATTS = 'energy_alltime_kwh'
 ATTR_WORK_ALLTIME = 'working_time_h'
 ATTR_TIMES = 'number_starts'
-ATTR_FIRMWARE_VERSION = 'firmware_version'
 ATTR_SYNC = 'last_sync'
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -83,7 +82,6 @@ class RedmondSensor(Entity):
             ATTR_TIMES: self._kettler._times,
             ATTR_WATTS: round(self._kettler._Watts / 1000, 2),
             ATTR_WORK_ALLTIME: self._kettler._alltime,
-            ATTR_FIRMWARE_VERSION: self._kettler._firmware_ver,
             ATTR_SYNC: self._sync
         }
 

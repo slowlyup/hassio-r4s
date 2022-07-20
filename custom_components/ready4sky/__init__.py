@@ -71,11 +71,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     hass.data[DOMAIN][config_entry.entry_id] = kettler
 
     dr.async_get(hass).async_get_or_create(
-        config_entry_id=config_entry.entry_id,
-        identifiers={(DOMAIN, config_entry.unique_id)},
-        connections={(dr.CONNECTION_NETWORK_MAC, mac)},
-        manufacturer="Redmond",
-        name="Ready4Sky",
+        config_entry_id = config_entry.entry_id,
+        identifiers = {
+            (DOMAIN, config_entry.unique_id)
+        },
+        connections = {
+            (dr.CONNECTION_NETWORK_MAC, mac)
+        },
+        manufacturer = "Redmond",
+        model = kettler._name,
+        name = kettler._name,
+        sw_version = kettler._firmware_ver
     )
 
     async_track_time_interval(hass, hass.data[DOMAIN][config_entry.entry_id].update, scan_delta)
