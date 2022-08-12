@@ -1,13 +1,13 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from bleak import (BleakScanner, BleakClient, BleakError)
-from re import search
-from textwrap import wrap
-import logging
-import binascii
-import asyncio
 import os
+import asyncio
+import logging
+import inspect
+import binascii
+from textwrap import wrap
+from bleak import (BleakScanner, BleakClient, BleakError)
 
 from .r4sconst import SUPPORTED_DEVICES
 
@@ -28,7 +28,7 @@ class BTLEConnection:
         self._iter = 0
         self._callbacks = {}
         self._afterConnectCallback = None
-        self._conn = BleakClient(self._mac, adapter=self._adapter)
+        self._conn = None
 
     async def setNameAndType(self):
         bleDevices = await self.getDiscoverDevices(self._adapter)
@@ -42,14 +42,15 @@ class BTLEConnection:
 
     async def __aenter__(self):
         for i in range(3):
-            isConnected = self._conn.is_connected
+            isConnected = self._conn is not None and self._conn.is_connected
 
-            _LOGGER.debug('IS CONNECTED: ' + str(isConnected))
+            _LOGGER.debug('IS CONNECTED: %s', str(isConnected))
 
             if isConnected:
                 break
 
             try:
+                self._conn = BleakClient(self._mac, adapter=self._adapter)
                 await self._conn.connect()
                 await self._conn.start_notify(UART_TX_CHAR_UUID, self.handleNotification)
                 await self.connectAfter()
@@ -97,7 +98,7 @@ class BTLEConnection:
         arrData = wrap(binascii.b2a_hex(data).decode("utf-8"), 2)
         respType = arrData[2]
 
-        _LOGGER.debug('NOTIF: handle: ' + str(handle) + ' cmd: ' + str(respType) + ' full: ' + str(arrData))
+        _LOGGER.debug('NOTIF: handle: %s cmd: %s full: %s', str(handle), str(respType), str(arrData))
 
         if respType in self._callbacks:
             self._callbacks[respType](arrData)
@@ -110,7 +111,7 @@ class BTLEConnection:
         self._callbacks[str(respType)] = function
 
     async def makeRequest(self, value):
-        _LOGGER.debug('MAKE REQUEST: ' + value)
+        _LOGGER.debug('MAKE REQUEST: %s', value)
 
         try:
             await self._conn.write_gatt_char(UART_RX_CHAR_UUID, binascii.a2b_hex(bytes(value, 'utf-8')), True)

@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from . import DOMAIN
+from . import DOMAIN, SIGNAL_UPDATE_DATA, RedmondKettler
 from homeassistant.const import CONF_MAC
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -15,8 +15,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         async_add_entities([RedmondSwitch(kettler)], True)
 
 class RedmondSwitch(SwitchEntity):
-
-    def __init__(self, kettler):
+    def __init__(self, kettler: RedmondKettler):
         self._name = 'Switch ' + kettler._name
         self._icon = 'mdi:air-filter'
         self._kettler = kettler
@@ -69,11 +68,7 @@ class RedmondSwitch(SwitchEntity):
     @property
     def unique_id(self):
         return f'{DOMAIN}[{self._kettler._mac}][{self._name}]'
-    
-    
-    
-    
-    
+
 class RedmondSwitchIon(SwitchEntity):
 
     def __init__(self, kettler):
