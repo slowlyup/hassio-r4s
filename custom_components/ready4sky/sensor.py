@@ -1,15 +1,16 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from . import DOMAIN, SIGNAL_UPDATE_DATA
-from homeassistant.const import CONF_MAC
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+
+from . import DOMAIN, SIGNAL_UPDATE_DATA
 
 ATTR_WATTS = 'energy_alltime_kwh'
 ATTR_WORK_ALLTIME = 'working_time_h'
 ATTR_TIMES = 'number_starts'
 ATTR_SYNC = 'last_sync'
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
@@ -19,6 +20,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     elif kettler._type == 5:
         async_add_entities([RedmondCooker(kettler)], True)
+
 
 class RedmondSensor(Entity):
     def __init__(self, kettler):
@@ -154,9 +156,9 @@ class RedmondCooker(Entity):
     @property
     def extra_state_attributes(self):
         attributes = {
-            'sync':str(self._sync),
-            'Timer PROG':self._timer_prog,
-            'Timer CURR':self._timer_curr}
+            'sync': str(self._sync),
+            'Timer PROG': self._timer_prog,
+            'Timer CURR': self._timer_curr}
         return attributes
 
     @property

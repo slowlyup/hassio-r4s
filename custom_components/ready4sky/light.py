@@ -1,26 +1,23 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from . import DOMAIN, SIGNAL_UPDATE_DATA
-
-from homeassistant.const import CONF_MAC
-
 from homeassistant.components.light import (
-    ATTR_RGB_COLOR,
     ATTR_HS_COLOR,
     ATTR_BRIGHTNESS,
-
     SUPPORT_COLOR,
-
     LightEntity,
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+
+from . import DOMAIN, SIGNAL_UPDATE_DATA
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
 
     if kettler._type in [1, 2]:
         async_add_entities([RedmondLight(kettler)], True)
+
 
 class RedmondLight(LightEntity):
     def __init__(self, kettler):

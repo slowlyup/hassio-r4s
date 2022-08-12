@@ -123,7 +123,7 @@ class BTLEConnection:
 
         return False
 
-    async def sendRequest(self, cmdHex, dataHex = ''):
+    async def sendRequest(self, cmdHex, dataHex=''):
         return await self.makeRequest('55' + self.getHexNextIter() + str(cmdHex) + dataHex + 'aa')
 
     def hexToDec(self, hexStr) -> int:

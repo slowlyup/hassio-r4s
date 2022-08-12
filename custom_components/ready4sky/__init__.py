@@ -1,31 +1,25 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-import binascii
 import asyncio
-import inspect
-import time
 import logging
-
-from functools import partial
+import time
 from datetime import (timedelta)
-from textwrap import wrap
 from enum import Enum
 
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_time_interval, async_call_later
-from homeassistant.util import color as color_util
 from homeassistant.const import (
     CONF_DEVICE,
     CONF_MAC,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.util import color as color_util
 
-from .r4sconst import SUPPORTED_DEVICES
 from .btle import BTLEConnection
 
 DOMAIN = "ready4sky"
@@ -46,9 +40,11 @@ CONF_TARGET_TEMP = 100
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup(hass, config):
     hass.data.setdefault(DOMAIN, {})
     return True
+
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     config = config_entry.data
@@ -71,17 +67,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     hass.data[DOMAIN][config_entry.entry_id] = kettler
 
     dr.async_get(hass).async_get_or_create(
-        config_entry_id = config_entry.entry_id,
-        identifiers = {
+        config_entry_id=config_entry.entry_id,
+        identifiers={
             (DOMAIN, config_entry.unique_id)
         },
-        connections = {
+        connections={
             (dr.CONNECTION_NETWORK_MAC, mac)
         },
-        manufacturer = "Redmond",
-        model = kettler._name,
-        name = kettler._name,
-        sw_version = kettler._firmware_ver
+        manufacturer="Redmond",
+        model=kettler._name,
+        name=kettler._name,
+        sw_version=kettler._firmware_ver
     )
 
     async_track_time_interval(hass, hass.data[DOMAIN][config_entry.entry_id].update, scan_delta)
@@ -90,6 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, component))
 
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
@@ -100,23 +97,24 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         pass
     return True
 
-class RedmondCommand(Enum): 
+
+class RedmondCommand(Enum):
     AUTH = 'ff'
     VERSION = '01'
     RUN_CURRENT_MODE = '03'  # sendOn
-    STOP_CURRENT_MODE = '04' # sendOff
-    SET_STATUS_MODE = '05' # sendMode
+    STOP_CURRENT_MODE = '04'  # sendOff
+    SET_STATUS_MODE = '05'  # sendMode
     GET_STATUS_MODE = '06'
     SET_TEMPERATURE = '07'
     SET_DELAY = '08'
-    SET_COLOR = '32' # sendSetLights
-    GET_COLOR = '33' # sendGetLights
-    SET_BACKLIGHT_MODE = '37' # sendUseBacklight
+    SET_COLOR = '32'  # sendSetLights
+    GET_COLOR = '33'  # sendGetLights
+    SET_BACKLIGHT_MODE = '37'  # sendUseBacklight
     SET_SOUND = '3c'
     SET_LOCK_BUTTONS = '3e'
     GET_STATISTICS_WATT = '47'
     GET_STARTS_COUNT = '50'
-    SET_TIME = '6e' #sendSync
+    SET_TIME = '6e'  # sendSync
     SET_IONIZATION = '1b'
     SET_TIME_COOKER = '0c'
     SET_TEMP_COOKER = '0b'
@@ -128,6 +126,8 @@ class RedmondCommand(Enum):
 class RedmondKettler:
     def __init__(self, hass, addr, key, device, backlight):
         self.hass = hass
+        self._type = None
+        self._name = None
         self._mac = addr
         self._key = key
         self._adapter = device
@@ -146,13 +146,13 @@ class RedmondKettler:
         self._rgb1 = '0000ff'
         self._rgb2 = 'ff0000'
         self._mode = '00'  # '00' - boil, '01' - heat to temp, '03' - backlight  for cooker 00 - heat after cook   01 - off after cook        for fan 00-06 - speed 
-        self._status = '00'  #may be '00' - OFF or '02' - ON         for cooker 00 - off   01 - setup program   02 - on  04 - heat   05 - delayed start
-        self._prog = '00'  #  program
+        self._status = '00'  # may be '00' - OFF or '02' - ON         for cooker 00 - off   01 - setup program   02 - on  04 - heat   05 - delayed start
+        self._prog = '00'  # program
         self._sprog = '00'  # subprogram
-        self._ph = 0  #  program hours
-        self._pm = 0  #  program min
-        self._th = 0  #  timer hours
-        self._tm = 0  #  timer min
+        self._ph = 0  # program hours
+        self._pm = 0  # program min
+        self._th = 0  # timer hours
+        self._tm = 0  # timer min
         self._ion = '00'  # 00 - off   01 - on
         self._auth = False
         self._conn = BTLEConnection(self._mac, self._key, self._adapter)
@@ -175,7 +175,7 @@ class RedmondKettler:
         try:
             hs1 = self.rgbhex_to_hs(rgb1)
             hs2 = self.rgbhex_to_hs(rgb2)
-            hmid = int((hs1[0] + hs2[0]) /2)
+            hmid = int((hs1[0] + hs2[0]) / 2)
             smid = int((hs1[1] + hs2[1]) / 2)
             hsmid = (hmid, smid)
             return self.hs_to_rgbhex(hsmid)
@@ -190,8 +190,8 @@ class RedmondKettler:
         rgb = color_util.color_hs_to_RGB(*hs)
         return color_util.color_rgb_to_hex(*rgb)
 
-    def hexToDec(self, chr) -> int:
-        return self._conn.hexToDec(chr)
+    def hexToDec(self, hexChr) -> int:
+        return self._conn.hexToDec(hexChr)
 
     def decToHex(self, num) -> str:
         return self._conn.decToHex(num)
@@ -340,7 +340,7 @@ class RedmondKettler:
 
         return False
 
-    async def sendTempCook(self, conn, temp):  #temp in HEX or speed 00-06
+    async def sendTempCook(self, conn, temp):  # temp in HEX or speed 00-06
         if self._type in [3, 5]:
             return await conn.sendRequest(RedmondCommand.SET_TEMP_COOKER, temp)
         else:
@@ -348,7 +348,7 @@ class RedmondKettler:
 
         return False
 
-    async def sendIonCmd(self, conn, onoff):  #00-off 01-on
+    async def sendIonCmd(self, conn, onoff):  # 00-off 01-on
         if self._type == 3:
             return await conn.sendRequest(RedmondCommand.SET_IONIZATION, onoff)
 
@@ -393,24 +393,24 @@ class RedmondKettler:
 
     async def startNightColor(self):
         try:
-           async with self._conn as conn:
-            isOff = True
-            if self._status == '02' and self._mode != '03':
-                isOff = await self.sendOff(conn)
+            async with self._conn as conn:
+                isOff = True
+                if self._status == '02' and self._mode != '03':
+                    isOff = await self.sendOff(conn)
 
-            if isOff and await self.sendSetLights(conn, '01', self._rgb1):
-                if await self.sendMode(conn, '03', '00'):
-                    if await self.sendOn(conn):
-                        if await self.sendStatus(conn):
-                            return True
+                if isOff and await self.sendSetLights(conn, '01', self._rgb1):
+                    if await self.sendMode(conn, '03', '00'):
+                        if await self.sendOn(conn):
+                            if await self.sendStatus(conn):
+                                return True
         except:
             pass
 
         return False
 
-    async def modeOn(self, mode= "00", temp= "00"):
+    async def modeOn(self, mode="00", temp="00"):
         try:
-           async with self._conn as conn:
+            async with self._conn as conn:
                 offed = False
                 if self._status == '02':
                     if self.sendOff(conn):
@@ -425,10 +425,10 @@ class RedmondKettler:
 
         return False
 
-    async def modeOnCook(self, prog, sprog, temp, hours, minutes, dhours='00', dminutes='00', heat = '01'):
+    async def modeOnCook(self, prog, sprog, temp, hours, minutes, dhours='00', dminutes='00', heat='01'):
         answ = False
         try:
-           async with self._conn as conn:
+            async with self._conn as conn:
                 offed = False
                 if self._status != '00':
                     if self.sendOff(conn):
@@ -447,7 +447,7 @@ class RedmondKettler:
 
     async def modeTempCook(self, temp):
         try:
-           async with self._conn as conn:
+            async with self._conn as conn:
                 if await self.sendTempCook(conn, temp) and await self.sendStatus(conn):
                     return True
         except:
@@ -458,7 +458,7 @@ class RedmondKettler:
     async def modeFan(self, speed):
         answ = False
         try:
-           async with self._conn as conn:
+            async with self._conn as conn:
                 if await self.sendTempCook(conn, speed):
                     if await self.sendAfterSpeed(conn):
                         if self._status == '00':
@@ -473,7 +473,7 @@ class RedmondKettler:
     async def modeIon(self, onoff):
         answ = False
         try:
-           async with self._conn as conn:
+            async with self._conn as conn:
                 if await self.sendIonCmd(conn, onoff):
                     if await self.sendStatus(conn):
                         answ = True
@@ -484,7 +484,7 @@ class RedmondKettler:
 
     async def modeTimeCook(self, hours, minutes):
         try:
-           async with self._conn as conn:
+            async with self._conn as conn:
                 if await self.sendTimerCook(conn, hours, minutes) and await self.sendStatus(conn):
                     return True
         except:
@@ -495,7 +495,7 @@ class RedmondKettler:
     async def modeOff(self):
         answ = False
         try:
-           async with self._conn as conn:
+            async with self._conn as conn:
                 if await self.sendOff(conn):
                     if await self.sendStatus(conn):
                         answ = True
@@ -506,7 +506,7 @@ class RedmondKettler:
 
     async def update(self, now, **kwargs) -> None:
         try:
-           async with self._conn as conn:
+            async with self._conn as conn:
                 if await self.sendSyncDateTime(conn) and await self.sendStatus(conn) and await self.sendStat(conn):
                     return True
         except:

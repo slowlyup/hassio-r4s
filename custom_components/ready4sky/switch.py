@@ -1,10 +1,11 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from . import DOMAIN, SIGNAL_UPDATE_DATA, RedmondKettler
-from homeassistant.const import CONF_MAC
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+
+from . import DOMAIN, SIGNAL_UPDATE_DATA, RedmondKettler
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
@@ -13,6 +14,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         async_add_entities([RedmondSwitchIon(kettler)], True)
     elif kettler._type == 4:
         async_add_entities([RedmondSwitch(kettler)], True)
+
 
 class RedmondSwitch(SwitchEntity):
     def __init__(self, kettler: RedmondKettler):
@@ -68,6 +70,7 @@ class RedmondSwitch(SwitchEntity):
     @property
     def unique_id(self):
         return f'{DOMAIN}[{self._kettler._mac}][{self._name}]'
+
 
 class RedmondSwitchIon(SwitchEntity):
 

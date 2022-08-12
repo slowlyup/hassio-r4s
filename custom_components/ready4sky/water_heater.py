@@ -1,8 +1,7 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-from . import DOMAIN, SIGNAL_UPDATE_DATA
-
+import logging
 import voluptuous as vol
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.components.water_heater import (
@@ -12,28 +11,12 @@ from homeassistant.components.water_heater import (
     ATTR_TEMPERATURE
 )
 from homeassistant.const import (
-    STATE_UNKNOWN,
     STATE_OFF,
-    TEMP_CELSIUS,
-    CONF_MAC
+    TEMP_CELSIUS
 )
 from homeassistant.helpers import entity_platform
-from homeassistant.core import callback
-import homeassistant.helpers.config_validation as cv
-import logging
-import typing
-import datetime
-from homeassistant.const import (
-    ATTR_DATE,
-    ATTR_EDITABLE,
-    ATTR_TIME,
-    CONF_ICON,
-    CONF_ID,
-    CONF_NAME
-)
-from homeassistant.helpers import collection
-from homeassistant.helpers.entity_component import EntityComponent
 
+from . import DOMAIN, SIGNAL_UPDATE_DATA
 from .r4sconst import COOKER_PROGRAMS
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,6 +26,7 @@ SUPPORT_FLAGS_HEATER = WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeater
 COOKER_OPERATION_LIST = [program for program, value in COOKER_PROGRAMS.items()]
 COOKER_OPERATION_LIST.append(STATE_OFF)
 
+
 async def async_setup_entry(hass, config_entry, async_add_entities):
     kettler = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -51,8 +35,22 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     elif kettler._type == 5:
         async_add_entities([RedmondCooker(kettler)], True)
         platform = entity_platform.current_platform.get()
-        platform.async_register_entity_service("set_timer",{vol.Required("hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)), vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59))},"async_set_timer",)
-        platform.async_register_entity_service("set_manual_program",{vol.Required("prog"): vol.All(vol.Coerce(int), vol.Range(min=0, max=12)), vol.Required("subprog"): vol.All(vol.Coerce(int), vol.Range(min=0, max=3)),vol.Required("temp"): vol.All(vol.Coerce(int), vol.Range(min=30, max=180)), vol.Required("hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)), vol.Required("dhours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),vol.Required("dminutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)), vol.Required("heat"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1))},"async_set_manual_program",)
+        platform.async_register_entity_service("set_timer", {
+            vol.Required("hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+            vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59))
+        }, "async_set_timer", )
+
+        platform.async_register_entity_service("set_manual_program", {
+            vol.Required("prog"): vol.All(vol.Coerce(int), vol.Range(min=0, max=12)),
+            vol.Required("subprog"): vol.All(vol.Coerce(int), vol.Range(min=0, max=3)),
+            vol.Required("temp"): vol.All(vol.Coerce(int), vol.Range(min=30, max=180)),
+            vol.Required("hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+            vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
+            vol.Required("dhours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+            vol.Required("dminutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
+            vol.Required("heat"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1))
+        }, "async_set_manual_program", )
+
 
 class RedmondWaterHeater(WaterHeaterEntity):
     def __init__(self, kettler):
@@ -187,7 +185,7 @@ class RedmondCooker(WaterHeaterEntity):
         self._co = STATE_OFF
         if self._kettler._status == '02' or self._kettler._status == '04' or self._kettler._status == '05':
             self._co = 'MANUAL'
-            for key,value in COOKER_PROGRAMS.items():
+            for key, value in COOKER_PROGRAMS.items():
                 if value[0] == self._kettler._prog:
                     self._co = key
         self.schedule_update_ha_state()
@@ -256,7 +254,7 @@ class RedmondCooker(WaterHeaterEntity):
             dhoursh = self._kettler.decToHex(dhours)
             dminutesh = self._kettler.decToHex(dminutes)
             heath = self._kettler.decToHex(heat)
-            await self._kettler.modeOnCook(progh,subprogh,temph,hoursh,minutesh,dhoursh,dminutesh,heath)
+            await self._kettler.modeOnCook(progh, subprogh, temph, hoursh, minutesh, dhoursh, dminutesh, heath)
         except:
             pass
 
@@ -266,7 +264,7 @@ class RedmondCooker(WaterHeaterEntity):
         try:
             hoursh = self._kettler.decToHex(hours)
             minutesh = self._kettler.decToHex(minutes)
-            await self._kettler.modeTimeCook(hoursh,minutesh)
+            await self._kettler.modeTimeCook(hoursh, minutesh)
         except:
             pass
 
