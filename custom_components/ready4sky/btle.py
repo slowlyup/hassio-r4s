@@ -36,7 +36,7 @@ class BTLEConnection:
         self._type = SUPPORTED_DEVICES.get(self._name, None)
 
         if self._type is None:
-            raise BleakError('type device not supported')
+            raise BleakError('type device "' + self._name + '" not supported')
 
         return self
 
