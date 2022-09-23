@@ -1,21 +1,21 @@
 import secrets
+
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers import config_validation
 from homeassistant.const import (
-    CONF_DEVICE,
     CONF_MAC,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL
 )
-
+from homeassistant.helpers import config_validation
 from voluptuous import Schema, Required, Optional, In
 
 from . import DOMAIN, CONF_USE_BACKLIGHT
-from .btle import BTLEConnection, DEFAULT_ADAPTER
+from .btle import BTLEConnection
 
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_USE_BACKLIGHT = True
+
 
 # @config_entries.HANDLERS.register(DOMAIN)
 class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -24,7 +24,6 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self):
         self.data = {}
-        self._hci_devices = {}
         self._ble_devices = {}
 
     async def async_step_user(self, user_input={}):
@@ -36,20 +35,17 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.create_entryS()
 
     async def show_form(self, user_input={}, errors={}):
-        hciDevices = BTLEConnection.getIfaces()
-        bleDevices = await BTLEConnection.getDiscoverDevices()
+        bleDevices = await BTLEConnection.getDiscoverDevices(self.hass)
         for address in bleDevices:
             if address.replace(':', '') != bleDevices[address].replace('-', ''):
                 bleDevices[address] += ' (' + address + ')'
 
-        device = user_input.get(CONF_DEVICE, DEFAULT_ADAPTER)
         mac = str(user_input.get(CONF_MAC)).upper()
         password = user_input.get(CONF_PASSWORD, secrets.token_hex(8))
         scan_interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         backlight = user_input.get(CONF_USE_BACKLIGHT, DEFAULT_USE_BACKLIGHT)
 
         SCHEMA = Schema({
-            Required(CONF_DEVICE, default=device): In(hciDevices),
             Required(CONF_MAC, default=mac): In(bleDevices),
             Required(CONF_PASSWORD, default=password): str,
             Optional(CONF_SCAN_INTERVAL, default=scan_interval): int,
@@ -98,7 +94,7 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.show_form_info()
 
-    #@staticmethod
-    #@callback
-    #def async_get_options_flow(entry):
+    # @staticmethod
+    # @callback
+    # def async_get_options_flow(entry):
     #    return RedmondKettlerConfigFlow(entry=entry)

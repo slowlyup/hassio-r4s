@@ -13,14 +13,16 @@ Full list of supported devices see in: /custom_components/ready4sky/r4sconst.py
 
 ### Configuration:
 
-<img width="456" alt="Config flow" src="https://user-images.githubusercontent.com/9576189/78805578-3fdca180-79ca-11ea-9dda-5710c7f46f66.png">
+1) Enable and setting Home Assistant Bluetooth integration
+2) Setting current integration
+
+![Screenshot](images/configuration.jpg)
 
 
 **Configuration variables:**  
   
 key | description  
 :--- | :---  
-**device (Required)** | The physical bluetooth device, for example 'hci0' (имя физического устройства блютус, например 'hci0')
 **mac (Required)** | The mac address of Redmond Kettler (мак адрес чайника Redmond)
 **password (Required)** | the password to your kettler, HEX formt 8 byte (пароль для подключения к чайнику, должен быть в HEX формате, длиной 8 байт), воспользуйтесь https://www.online-toolz.com/tools/text-hex-convertor.php
 **scan_interval (Optional)** | The polling interval in seconds. The default is 60. Please note that at Rasberberry it led to a load on the module and periodic dumps. You can experimentally set the time interval that suits you. (Время между опросами BLE устройства в секундах. По умолчанию 60 секунд. Учтите, что на Raspberry PI  это приводило к повышению нагрузки)
@@ -41,20 +43,10 @@ this configuration works out of the box with hassio. In any other configuration,
 
 **Screenshots**
 
-![example1][exampleimg1]
-![example2][exampleimg2]
-![example3][exampleimg3]
-![example4][exampleimg4]
-
-
-
-***
-
-
-[exampleimg1]: 01.jpg
-[exampleimg2]: 02.jpg
-[exampleimg3]: 03.jpg
-[exampleimg4]: 04.jpg
+![Screenshot1](images/01.jpg)
+![Screenshot1](images/02.jpg)
+![Screenshot1](images/03.jpg)
+![Screenshot1](images/04.jpg)
 
 
 **Google Home / Alexa / HomeKit / Yandex Alisa integration**
@@ -93,6 +85,7 @@ logger:
 ***What's new:***
 
 2022-09-23
+ - use HA Bluetooth component
  - support HA 2022.9.x
  - optimizations
  - Fix #3, tnx @Sensei8

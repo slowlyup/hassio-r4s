@@ -9,7 +9,6 @@ from enum import Enum
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONF_DEVICE,
     CONF_MAC,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL
@@ -48,18 +47,17 @@ async def async_setup(hass, config):
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     config = config_entry.data
     mac = str(config.get(CONF_MAC)).upper()
-    device = config.get(CONF_DEVICE)
     password = config.get(CONF_PASSWORD)
     scan_delta = timedelta(seconds=config.get(CONF_SCAN_INTERVAL))
     backlight = config.get(CONF_USE_BACKLIGHT)
 
-    kettler = RedmondKettler(hass, mac, password, device, backlight)
+    kettler = RedmondKettler(hass, mac, password, backlight)
     await kettler.setNameAndType()
 
     try:
         await kettler.firstConnect()
     except BaseException as ex:
-        _LOGGER.error("Connect to %s through device %s failed", mac, device)
+        _LOGGER.error("Connect to %s through device %s failed", mac)
         _LOGGER.exception(ex)
         return False
 
@@ -123,13 +121,12 @@ class RedmondCommand(Enum):
 
 
 class RedmondKettler:
-    def __init__(self, hass, addr, key, device, backlight):
+    def __init__(self, hass, addr, key, backlight):
         self.hass = hass
         self._type = None
         self._name = None
         self._mac = addr
         self._key = key
-        self._adapter = device
         self._use_backlight = backlight
         self._mntemp = CONF_MIN_TEMP
         self._mxtemp = CONF_MAX_TEMP
@@ -154,7 +151,7 @@ class RedmondKettler:
         self._tm = 0  # timer min
         self._ion = '00'  # 00 - off   01 - on
         self._auth = False
-        self._conn = BTLEConnection(self._mac, self._key, self._adapter)
+        self._conn = BTLEConnection(self.hass, self._mac, self._key)
         self.initCallbacks()
 
     async def setNameAndType(self):

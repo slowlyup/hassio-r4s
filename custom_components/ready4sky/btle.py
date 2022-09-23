@@ -1,37 +1,37 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-import os
 import asyncio
-import logging
-import inspect
 import binascii
+import inspect
+import logging
 from textwrap import wrap
-from bleak import (BleakScanner, BleakClient, BleakError)
+
+from bleak import (BleakClient, BleakError)
+from homeassistant.components import bluetooth
 
 from .r4sconst import SUPPORTED_DEVICES
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_ADAPTER = "hci0"
 UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 
 class BTLEConnection:
-    def __init__(self, mac, key, device):
+    def __init__(self, hass, mac, key, ):
         self._type = None
         self._name = ''
+        self._hass = hass
         self._mac = mac
         self._key = key
-        self._adapter = device
         self._iter = 0
         self._callbacks = {}
         self._afterConnectCallback = None
         self._conn = None
 
     async def setNameAndType(self):
-        bleDevices = await self.getDiscoverDevices(self._adapter)
+        bleDevices = await self.getDiscoverDevices(self._hass)
         self._name = bleDevices.get(self._mac, 'None')
         self._type = SUPPORTED_DEVICES.get(self._name, None)
 
@@ -50,7 +50,8 @@ class BTLEConnection:
                 break
 
             try:
-                self._conn = BleakClient(self._mac, adapter=self._adapter)
+                self._conn = BleakClient(bluetooth.async_ble_device_from_address(self._hass, self._mac, False) or self._mac)
+
                 await self._conn.connect()
                 await self._conn.start_notify(UART_TX_CHAR_UUID, self.handleNotification)
                 await self.connectAfter()
@@ -72,16 +73,9 @@ class BTLEConnection:
             await self.disconnect()
 
     @staticmethod
-    def getIfaces():
-        try:
-            lines = os.listdir('/sys/class/bluetooth/')
-            return {name: name for name in lines if 'hci' in name}
-        except:
-            return {DEFAULT_ADAPTER: DEFAULT_ADAPTER}
+    async def getDiscoverDevices(hass, timeout=5.0):
+        devices = await bluetooth.async_get_scanner(hass).discover(timeout)
 
-    @staticmethod
-    async def getDiscoverDevices(iface=DEFAULT_ADAPTER, timeout=5.0):
-        devices = await BleakScanner.discover(timeout, adapter=iface)
         return {str(device.address): str(device.name) for device in devices}
 
     async def disconnect(self):
