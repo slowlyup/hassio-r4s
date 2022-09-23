@@ -95,6 +95,7 @@ logger:
 2022-09-23
  - support HA 2022.9.x
  - optimizations
+ - Fix #3, tnx @Sensei8
 
 2022-07-12
  - support HA 2022.7.x

@@ -126,10 +126,10 @@ class BTLEConnection:
     async def sendRequest(self, cmdHex, dataHex=''):
         return await self.makeRequest('55' + self.getHexNextIter() + str(cmdHex) + dataHex + 'aa')
 
-    def hexToDec(self, hexStr) -> int:
+    def hexToDec(self, hexStr: str) -> int:
         return int.from_bytes(binascii.a2b_hex(bytes(hexStr, 'utf-8')), 'little')
 
-    def decToHex(self, num) -> str:
+    def decToHex(self, num: int) -> str:
         return num.to_bytes((num.bit_length() + 7) // 8, 'little').hex() or '00'
 
     def getHexNextIter(self) -> str:

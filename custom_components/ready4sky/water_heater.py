@@ -138,7 +138,7 @@ class RedmondWaterHeater(WaterHeaterEntity):
         if temperature is None:
             return
 
-        self._tgtemp = temperature
+        self._tgtemp = int(temperature)
         await self.async_set_operation_mode(STATE_ELECTRIC)
 
     async def async_turn_on(self):
@@ -270,9 +270,11 @@ class RedmondCooker(WaterHeaterEntity):
 
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs.get(ATTR_TEMPERATURE)
+
         if temperature is None:
             return
-        await self._kettler.modeTempCook(self._kettler.decToHex(temperature))
+
+        await self._kettler.modeTempCook(self._kettler.decToHex(int(temperature)))
 
     @property
     def min_temp(self):
