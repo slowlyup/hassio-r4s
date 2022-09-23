@@ -3,7 +3,7 @@
   "name": "ready4sky",
   "version": "1.5",
   "documentation": "https://github.com/XNicON/hassio-r4s/blob/master/README.md",
-  "dependencies": [],
+  "dependencies": ["bluetooth"],
   "codeowners": ["@mavrikk", "@XNicON"],
   "requirements": ["bleak>=0.11.0"],
   "config_flow": true

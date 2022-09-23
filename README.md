@@ -92,6 +92,10 @@ logger:
 
 ***What's new:***
 
+2022-09-23
+ - support HA 2022.9.x
+ - optimizations
+
 2022-07-12
  - support HA 2022.7.x
  - use bleak (remove bluepy)
