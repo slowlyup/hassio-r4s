@@ -29,18 +29,29 @@ class BTLEConnection:
         self._callbacks = {}
         self._afterConnectCallback = None
         self._conn = None
+        self._device = None
 
     async def setNameAndType(self):
-        bleDevices = await self.getDiscoverDevices(self._hass)
-        self._name = bleDevices.get(self._mac, 'None')
-        self._type = SUPPORTED_DEVICES.get(self._name, None)
+        self._device = bluetooth.async_ble_device_from_address(self._hass, self._mac, False)
 
-        if self._type is None:
-            raise BleakError('type device "' + self._name + '" not supported')
+        if not self._device:
+            _LOGGER.debug('Device "%s" not found on bluetooth network', self._mac)
+            return self
+
+        self._name = self._device.name
+        self._type = SUPPORTED_DEVICES.get(self._name)
+
+        if not self._type:
+            _LOGGER.debug('Device "%s" not supported', self._name)
 
         return self
 
     async def __aenter__(self):
+        if not self._type:
+            await self.setNameAndType()
+            if not self._type:
+                return self
+
         for i in range(3):
             isConnected = self._conn is not None and self._conn.is_connected
 
@@ -50,7 +61,7 @@ class BTLEConnection:
                 break
 
             try:
-                self._conn = BleakClient(bluetooth.async_ble_device_from_address(self._hass, self._mac, False) or self._mac)
+                self._conn = BleakClient(self._device or self._mac)
 
                 await self._conn.connect()
                 await self._conn.start_notify(UART_TX_CHAR_UUID, self.handleNotification)
@@ -73,8 +84,8 @@ class BTLEConnection:
             await self.disconnect()
 
     @staticmethod
-    async def getDiscoverDevices(hass, timeout=5.0):
-        devices = await bluetooth.async_get_scanner(hass).discover(timeout)
+    async def getDiscoverDevices(hass):
+        devices = await bluetooth.async_get_scanner(hass).discover()
 
         return {str(device.address): str(device.name) for device in devices}
 
@@ -120,10 +131,12 @@ class BTLEConnection:
     async def sendRequest(self, cmdHex, dataHex=''):
         return await self.makeRequest('55' + self.getHexNextIter() + str(cmdHex) + dataHex + 'aa')
 
-    def hexToDec(self, hexStr: str) -> int:
+    @staticmethod
+    def hexToDec(hexStr: str) -> int:
         return int.from_bytes(binascii.a2b_hex(bytes(hexStr, 'utf-8')), 'little')
 
-    def decToHex(self, num: int) -> str:
+    @staticmethod
+    def decToHex(num: int) -> str:
         return num.to_bytes((num.bit_length() + 7) // 8, 'little').hex() or '00'
 
     def getHexNextIter(self) -> str:

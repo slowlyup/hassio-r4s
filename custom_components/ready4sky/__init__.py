@@ -17,7 +17,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.util import color as color_util
 
 from .btle import BTLEConnection
 
@@ -139,8 +138,8 @@ class RedmondKettler:
         self._time_upd = '00:00'
         self._boiltime = '80'
         self._nightlight_brightness = 255
-        self._rgb1 = '0000ff'
-        self._rgb2 = 'ff0000'
+        self._rgb1 = (0, 0, 255)
+        self._rgb2 = (255, 0, 0)
         self._mode = '00'  # '00' - boil, '01' - heat to temp, '03' - backlight  for cooker 00 - heat after cook   01 - off after cook        for fan 00-06 - speed 
         self._status = '00'  # may be '00' - OFF or '02' - ON         for cooker 00 - off   01 - setup program   02 - on  04 - heat   05 - delayed start
         self._prog = '00'  # program
@@ -167,35 +166,27 @@ class RedmondKettler:
         self._conn.setCallback(RedmondCommand.GET_STATISTICS_WATT, self.responseStat)
         self._conn.setCallback(RedmondCommand.GET_STARTS_COUNT, self.responseStat)
 
-    def calcMidColor(self, rgb1, rgb2):
-        try:
-            hs1 = self.rgbhex_to_hs(rgb1)
-            hs2 = self.rgbhex_to_hs(rgb2)
-            hmid = int((hs1[0] + hs2[0]) / 2)
-            smid = int((hs1[1] + hs2[1]) / 2)
-            hsmid = (hmid, smid)
-            return self.hs_to_rgbhex(hsmid)
-        except:
-            return '00ff00'
+    def hexToRgb(self, hexa: str):
+        return tuple(int(hexa[i:i + 2], 16) for i in (0, 2, 4))
 
-    def rgbhex_to_hs(self, rgbhex):
-        rgb = color_util.rgb_hex_to_rgb_list(rgbhex)
-        return color_util.color_RGB_to_hs(*rgb)
+    def rgbToHex(self, rgb):
+        return '%02x%02x%02x' % rgb
 
-    def hs_to_rgbhex(self, hs):
-        rgb = color_util.color_hs_to_RGB(*hs)
-        return color_util.color_rgb_to_hex(*rgb)
+    @staticmethod
+    def hexToDec(hexChr: str) -> int:
+        return BTLEConnection.hexToDec(hexChr)
 
-    def hexToDec(self, hexChr: str) -> int:
-        return self._conn.hexToDec(hexChr)
-
-    def decToHex(self, num: int) -> str:
-        return self._conn.decToHex(num)
+    @staticmethod
+    def decToHex(num: int) -> str:
+        return BTLEConnection.decToHex(num)
 
     def getHexNextIter(self) -> str:
         return self._conn.getHexNextIter()
 
     async def sendAuth(self, conn):
+        self._type = conn._type
+        self._name = conn._name
+
         await conn.sendRequest(RedmondCommand.AUTH, self._key)
         await asyncio.sleep(1.5)
 
@@ -370,16 +361,17 @@ class RedmondKettler:
             return True
 
         if self._type in [1, 2]:
-            rgb_mid = rgb1
-            rgb2 = rgb1
+            scale_light = ['28', '46', '64'] if boilOrLight == "00" else ['00', '32', '64'];
             bright = self.decToHex(self._nightlight_brightness)
+            rgb2 = self.rgbToHex(self._rgb2)
 
-            if boilOrLight == "00":
-                scale_light = ['28', '46', '64']
-            else:
-                scale_light = ['00', '32', '64']
-
-            return await conn.sendRequest(RedmondCommand.SET_COLOR, boilOrLight + scale_light[0] + bright + rgb1 + scale_light[1] + bright + rgb_mid + scale_light[2] + bright + rgb2)
+            return await conn.sendRequest(
+                RedmondCommand.SET_COLOR,
+                boilOrLight
+                + scale_light[0] + bright + rgb1
+                + scale_light[1] + bright + rgb1
+                + scale_light[2] + bright + rgb2
+            )
 
         return False
 
@@ -390,7 +382,7 @@ class RedmondKettler:
                 if self._status == '02' and self._mode != '03':
                     isOff = await self.sendOff(conn)
 
-                if isOff and await self.sendSetLights(conn, '01', self._rgb1):
+                if isOff and await self.sendSetLights(conn, '01', self.rgbToHex(self._rgb1)):
                     if await self.sendMode(conn, '03', '00'):
                         if await self.sendOn(conn):
                             if await self.sendStatus(conn):
@@ -410,8 +402,9 @@ class RedmondKettler:
                 else:
                     offed = True
 
-                if offed and await self.sendMode(conn, mode, temp) and await self.sendOn(conn) and await self.sendStatus(conn):
-                    return True
+                if offed and await self.sendMode(conn, mode, temp):
+                    if await self.sendOn(conn) and await self.sendStatus(conn):
+                        return True
         except:
             pass
 
