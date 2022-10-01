@@ -1,17 +1,17 @@
 {
-  "domain": "ready4sky",
-  "name": "ready4sky",
-  "version": "1.5",
-  "documentation": "https://github.com/XNicON/hassio-r4s/blob/master/README.md",
-  "dependencies": [
-    "bluetooth"
-  ],
-  "codeowners": [
-    "@mavrikk",
-    "@XNicON"
-  ],
-  "requirements": [
-    "bleak>=0.11.0"
-  ],
-  "config_flow": true
+    "domain": "ready4sky",
+    "name": "ready4sky",
+    "version": "1.5",
+    "documentation": "https://github.com/XNicON/hassio-r4s/blob/master/README.md",
+    "dependencies": [
+        "bluetooth"
+    ],
+    "codeowners": [
+        "@mavrikk",
+        "@XNicON"
+    ],
+    "requirements": [
+        "bleak>=0.15.0"
+    ],
+    "config_flow": true
 }

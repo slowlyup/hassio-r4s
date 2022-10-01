@@ -58,7 +58,7 @@ switch:
     switches:
       switch_kettle_<anyname>:
         friendly_name: "Kettle"
-        value_template: "{{ states('sensor.status_<name sensor from HA>') != 'OFF' }}"
+        value_template: "{{ states('sensor.status_<name sensor from HA>') != 'off' }}"
         turn_on:
           service: water_heater.turn_on
           target:
@@ -83,6 +83,11 @@ logger:
 
 
 ***What's new:***
+
+2022-10-01
+ - added Russian translation for statuses
+ - water_heater operation split to boil and heat
+ - add configuration option "sound buttons"
 
 2022-09-23
  - use HA Bluetooth component

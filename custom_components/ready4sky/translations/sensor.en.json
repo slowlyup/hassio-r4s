@@ -1,0 +1,14 @@
+{
+    "state": {
+        "_": {
+            "boil": "Boil",
+            "heat": "Heat",
+            "light": "Night light",
+            "program": "Program",
+            "delayed start": "Delayed start",
+            "manual": "Manual",
+            "on": "On",
+            "off": "Off"
+        }
+    }
+}

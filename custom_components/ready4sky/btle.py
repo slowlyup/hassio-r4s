@@ -30,6 +30,7 @@ class BTLEConnection:
         self._afterConnectCallback = None
         self._conn = None
         self._device = None
+        self._available = False
 
     async def setNameAndType(self):
         self._device = bluetooth.async_ble_device_from_address(self._hass, self._mac, False)
@@ -43,6 +44,8 @@ class BTLEConnection:
 
         if not self._type:
             _LOGGER.debug('Device "%s" not supported', self._name)
+
+        self._available = True
 
         return self
 
@@ -116,7 +119,8 @@ class BTLEConnection:
         self._callbacks[str(respType)] = function
 
     async def makeRequest(self, value):
-        _LOGGER.debug('MAKE REQUEST: %s', value)
+        cmd = wrap(value, 2)
+        _LOGGER.debug('MAKE REQUEST: cmd %s, full %s', cmd[2], cmd)
 
         try:
             await self._conn.write_gatt_char(UART_RX_CHAR_UUID, binascii.a2b_hex(bytes(value, 'utf-8')), True)

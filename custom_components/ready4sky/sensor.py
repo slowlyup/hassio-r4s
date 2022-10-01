@@ -35,17 +35,17 @@ class RedmondSensor(Entity):
         self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
-        self._state = 'OFF'
+        self._state = 'off'
 
         if self._kettler._status == '02':
             if self._kettler._type in [3, 4]:
-                self._state = 'ON'
+                self._state = 'on'
             elif self._kettler._mode == '00':
-                self._state = 'BOIL'
+                self._state = 'boil'
             elif self._kettler._mode == '01':
-                self._state = 'HEAT'
+                self._state = 'heat'
             elif self._kettler._mode == '03':
-                self._state = 'LIGHT'
+                self._state = 'light'
 
         self._sync = str(self._kettler._time_upd)
         self.schedule_update_ha_state()
@@ -68,11 +68,11 @@ class RedmondSensor(Entity):
 
     @property
     def icon(self):
-        return 'mdi:toggle-switch' if self._state != 'OFF' else self._icon
+        return 'mdi:toggle-switch' if self._state != 'off' else self._icon
 
     @property
     def available(self):
-        return True
+        return self._kettler._available
 
     @property
     def state(self):
@@ -108,16 +108,16 @@ class RedmondCooker(Entity):
         self.async_on_remove(async_dispatcher_connect(self._kettler.hass, SIGNAL_UPDATE_DATA, self._handle_update))
 
     def _handle_update(self):
-        self._state = 'OFF'
+        self._state = 'off'
 
         if self._kettler._status == '01':
-            self._state = 'PROGRAM'
+            self._state = 'program'
         elif self._kettler._status == '02':
-            self._state = 'ON'
+            self._state = 'on'
         elif self._kettler._status == '04':
-            self._state = 'HEAT'
+            self._state = 'heat'
         elif self._kettler._status == '05':
-            self._state = 'DELAYED START'
+            self._state = 'delayed start'
 
         self._sync = str(self._kettler._time_upd)
         self._timer_prog = str(self._kettler._ph) + ':' + str(self._kettler._pm)
@@ -147,7 +147,7 @@ class RedmondCooker(Entity):
 
     @property
     def available(self):
-        return True
+        return self._kettler._available
 
     @property
     def state(self):

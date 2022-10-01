@@ -66,7 +66,7 @@ class RedmondLight(LightEntity):
 
     @property
     def available(self):
-        return True
+        return self._kettler._available
 
     @property
     def rgb_color(self) -> tuple[int, int, int] | None:

@@ -100,7 +100,7 @@ class RedmondFan(FanEntity):
 
     @property
     def available(self):
-        return True
+        return self._kettler._available
 
     @property
     def speed(self):
