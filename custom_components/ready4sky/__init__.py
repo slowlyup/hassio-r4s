@@ -322,7 +322,7 @@ class RedmondKettler:
     # 01 - heat
     # 03 - backlight (boil by default)
     # temp - temp or rgb in HEX
-    async def sendMode(self, conn, mode: str, temp: str):
+    async def sendMode(self, conn, mode: str, temp: str = '00'):
         if self._type in [3, 4, 5]:
             return True
 
@@ -401,11 +401,10 @@ class RedmondKettler:
     async def startNightColor(self):
         try:
             async with self._conn as conn:
-                isOff = True
                 if self._status == '02' and self._mode != MODE_LIGHT:
-                    isOff = await self.sendOff(conn)
+                    await self.sendOff(conn)
 
-                if isOff and await self.sendSetLights(conn, '01', self.rgbToHex(self._rgb1)):
+                if await self.sendSetLights(conn, '01', self.rgbToHex(self._rgb1)):
                     if await self.sendMode(conn, MODE_LIGHT):
                         if await self.sendOn(conn):
                             if await self.sendStatus(conn):
