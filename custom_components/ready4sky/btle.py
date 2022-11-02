@@ -43,7 +43,7 @@ class BTLEConnection:
         self._type = SUPPORTED_DEVICES.get(self._name)
 
         if not self._type:
-            _LOGGER.debug('Device "%s" not supported', self._name)
+            _LOGGER.debug('Device "%s" not supported. Please report developer or view file r4sconst.py', self._name)
 
         self._available = True
 
