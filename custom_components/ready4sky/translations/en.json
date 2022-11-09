@@ -26,12 +26,5 @@
         "abort": {
             "already_configured": "Integration for this device is already configured"
         }
-    },
-    "state": {
-        "_": {
-            "boil": "Boil",
-            "heat": "Heat",
-            "off": "Off"
-        }
     }
 }
