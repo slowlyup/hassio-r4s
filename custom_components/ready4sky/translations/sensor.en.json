@@ -2,10 +2,10 @@
     "state": {
         "_": {
             "boil": "Boil",
-            "heat": "Heat",
+            "keep_warm": "Keep warm",
             "light": "Night light",
             "program": "Program",
-            "delayed start": "Delayed start",
+            "delayed_start": "Delayed start",
             "manual": "Manual",
             "on": "On",
             "off": "Off"

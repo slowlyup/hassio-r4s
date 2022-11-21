@@ -21,7 +21,8 @@
         "error": {
             "wrong_password": "Password is not valid (8 byte length and HEX)",
             "wrong_mac": "MAC is malformed",
-            "wrong_scan_interval": "Scan interval should be from 10 to 300 seconds"
+            "wrong_scan_interval": "Scan interval should be from 10 to 300 seconds",
+            "device_not_supported": "Selected device is not supported, contact developer"
         },
         "abort": {
             "already_configured": "Integration for this device is already configured"

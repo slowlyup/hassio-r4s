@@ -2,7 +2,7 @@
     "state": {
         "_": {
             "boil": "Boil",
-            "heat": "Heat",
+            "keep_warm": "Keep warm",
             "off": "Off"
         }
     }

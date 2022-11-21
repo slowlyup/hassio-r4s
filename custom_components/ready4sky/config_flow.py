@@ -1,30 +1,71 @@
 import secrets
+import logging
 
+from home_assistant_bluetooth import BluetoothServiceInfo
 from homeassistant import config_entries
-from homeassistant.core import callback
+from homeassistant.components import onboarding
+from typing import Any
 from homeassistant.const import (
     CONF_MAC,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL
 )
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation
 from voluptuous import Schema, Required, Optional, In
 
+from .r4sconst import SUPPORTED_DEVICES
 from . import DOMAIN, CONF_USE_BACKLIGHT
 from .btle import BTLEConnection
 
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_USE_BACKLIGHT = True
 
+_LOGGER = logging.getLogger(__name__)
+
 
 # @config_entries.HANDLERS.register(DOMAIN)
-class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class RedmondKettleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self):
         self.data = {}
-        self._ble_devices = {}
+        self._bleDevices = {}
+
+    async def async_step_bluetooth(self, discovery_info: BluetoothServiceInfo) -> FlowResult:
+        """Handle the bluetooth discovery step."""
+        _LOGGER.error(discovery_info)
+
+        await self.async_set_unique_id(discovery_info.address)
+        self._abort_if_unique_id_configured()
+
+        _LOGGER.error(discovery_info.name)
+
+        device = SUPPORTED_DEVICES.get(discovery_info.name)
+        if not device:
+            return self.async_abort(reason="not_supported")
+
+        _LOGGER.error('SUPPORT')
+        self.context["title_placeholders"] = {"name": discovery_info.name}
+
+        return await self.async_step_bluetooth_confirm()
+
+    async def async_step_bluetooth_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Confirm discovery."""
+
+        _LOGGER.error('CONFIRM')
+
+        if user_input is not None or not onboarding.async_is_onboarded(self.hass):
+            return self.async_create_entry(title=self.context["title_placeholders"]["name"], data={})
+
+        _LOGGER.error('user_input')
+
+        self._set_confirm_only()
+        return self.async_show_form(
+            step_id="bluetooth_confirm",
+            description_placeholders=self.context["title_placeholders"]
+        )
 
     async def async_step_user(self, user_input={}):
         if user_input:
@@ -35,10 +76,14 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.create_entryS()
 
     async def show_form(self, user_input={}, errors={}):
-        bleDevices = await BTLEConnection.getDiscoverDevices(self.hass)
-        for address in bleDevices:
+        self._bleDevices = await BTLEConnection.getDiscoverDevices(self.hass)
+        bleDevices = self._bleDevices.copy()
+
+        for address, name in bleDevices.items():
             if address.replace(':', '') != bleDevices[address].replace('-', ''):
                 bleDevices[address] += ' (' + address + ')'
+
+            bleDevices[address] += ' - Supported' if SUPPORTED_DEVICES.get(name) else ' - Not supported'
 
         mac = str(user_input.get(CONF_MAC)).upper()
         password = user_input.get(CONF_PASSWORD, secrets.token_hex(8))
@@ -52,9 +97,7 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             Optional(CONF_USE_BACKLIGHT, default=backlight): config_validation.boolean
         })
 
-        return self.async_show_form(
-            step_id='user', data_schema=SCHEMA, errors=errors
-        )
+        return self.async_show_form(step_id='user', data_schema=SCHEMA, errors=errors)
 
     def show_form_info(self):
         return self.async_show_form(step_id='info')
@@ -63,9 +106,7 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         mac = self.data.get(CONF_MAC)
         identifier = f'{DOMAIN}[{mac}]'
         await self.async_set_unique_id(identifier)
-        return self.async_create_entry(
-            title=mac, data=self.data
-        )
+        return self.async_create_entry(title=mac, data=self.data)
 
     async def check_valid(self, user_input):
         mac = user_input.get(CONF_MAC)
@@ -90,11 +131,15 @@ class RedmondKettlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     'base': 'wrong_scan_interval'
                 }
             )
+
+        if SUPPORTED_DEVICES.get(self._bleDevices[mac]) is None:
+            return await self.show_form(
+                user_input=user_input,
+                errors={
+                    'base': 'device_not_supported'
+                }
+            )
+
         self.data = user_input
 
         return self.show_form_info()
-
-    # @staticmethod
-    # @callback
-    # def async_get_options_flow(entry):
-    #    return RedmondKettlerConfigFlow(entry=entry)

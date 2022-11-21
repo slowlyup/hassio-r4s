@@ -32,13 +32,25 @@ SIGNAL_UPDATE_DATA = 'ready4skyupdate'
 
 CONF_USE_BACKLIGHT = 'use_backlight'
 
-CONF_MIN_TEMP = 40
+CONF_MIN_TEMP = 35
 CONF_MAX_TEMP = 90
 
 STATUS_OFF = '00'
+STATUS_ON = '02'
+
+COOKER_STATUS_PROGRAM = '01'
+COOKER_STATUS_KEEP_WARM = '04'
+COOKER_STATUS_DELAYED_START = '05'
+
 MODE_BOIL = '00'
-MODE_HEAT = '01'
+MODE_KEEP_WARM = '01'
 MODE_LIGHT = '03'
+
+ATTR_WORK_ALLTIME = 'Working time (h)'
+ATTR_TIMES = 'Number starts'
+ATTR_SYNC = 'Last sync'
+ATTR_TIMER_SET = 'Timer set'
+ATTR_TIMER_CURR = 'Timer current'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,7 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     scan_delta = timedelta(seconds=config.get(CONF_SCAN_INTERVAL))
     backlight = config.get(CONF_USE_BACKLIGHT)
 
-    kettler = RedmondKettler(hass, mac, password, backlight)
+    kettler = RedmondKettle(hass, mac, password, backlight)
     await kettler.setNameAndType()
 
     try:
@@ -123,7 +135,7 @@ class RedmondCommand(Enum):
         return str(self.value)
 
 
-class RedmondKettler:
+class RedmondKettle:
     def __init__(self, hass, addr, key, backlight):
         self.hass = hass
         self._type = None
@@ -401,7 +413,7 @@ class RedmondKettler:
     async def startNightColor(self):
         try:
             async with self._conn as conn:
-                if self._status == '02' and self._mode != MODE_LIGHT:
+                if self._status == STATUS_ON and self._mode != MODE_LIGHT:
                     await self.sendOff(conn)
 
                 if await self.sendSetLights(conn, '01', self.rgbToHex(self._rgb1)):
@@ -431,7 +443,7 @@ class RedmondKettler:
     async def modeOnCook(self, prog, sprog, temp, hours, minutes, dhours='00', dminutes='00', heat='01'):
         try:
             async with self._conn as conn:
-                if self._status != '00':
+                if self._status != STATUS_OFF:
                     await self.sendOff(conn)
 
                 if await self.sendModeCook(conn, prog, sprog, temp, hours, minutes, dhours, dminutes, heat):
@@ -458,7 +470,7 @@ class RedmondKettler:
             async with self._conn as conn:
                 if await self.sendTemperature(conn, speed):
                     if await self.sendAfterSpeed(conn):
-                        if self._status == '00':
+                        if self._status == STATUS_OFF:
                             await self.sendOn(conn)
                         if await self.sendStatus(conn):
                             return True
@@ -513,7 +525,6 @@ class RedmondKettler:
 
         return False
 
-
     async def update(self, now, **kwargs) -> bool:
         try:
             async with self._conn as conn:
@@ -534,3 +545,6 @@ class RedmondKettler:
                         return True
 
         return False
+
+    def isRunning(self):
+        return self._status == STATUS_ON

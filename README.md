@@ -11,8 +11,11 @@ Full list of supported devices see in: /custom_components/ready4sky/r4sconst.py
 
 ---
 
-### Configuration:
+## Requirements
+- [Home Assistant](https://www.home-assistant.io) **2022.8+**
+- [Bluetooth Component](https://www.home-assistant.io/components/bluetooth)
 
+## Configuration
 1) Enable and setting Home Assistant Bluetooth integration
 2) Setting current integration
 
@@ -58,15 +61,15 @@ switch:
     switches:
       switch_kettle_<anyname>:
         friendly_name: "Kettle"
-        value_template: "{{ states('sensor.status_<name sensor from HA>') != 'off' }}"
+        value_template: "{{ states('sensor.<name sensor from HA>_status') != 'off' }}"
         turn_on:
           service: water_heater.turn_on
           target:
-            entity_id: water_heater.kettle_<name sensor from HA>
+            entity_id: water_heater.<name sensor from HA>_kettle
         turn_off:
           service: water_heater.turn_off
           target:
-            entity_id: water_heater.kettle_<name sensor from HA>
+            entity_id: water_heater.<name sensor from HA>_kettle
 ```
 
 **Debug log enable**
@@ -83,6 +86,11 @@ logger:
 
 
 ***What's new:***
+2022-11-21
+ - reorganisation sensors/switches/etc (please re-add integration)
+ - Added validation "is support" to selected device on setup step
+ - add energy sensor
+ - set min temperature kettle - 35°C
 
 2022-10-01
  - added Russian translation for statuses
@@ -132,4 +140,3 @@ logger:
 2020/01/27 add switch to manage "hold temperature after heat" option
 
 2020/01/26 add switch to manage "use backlight to show current temperaure and sync statuses" option
-
