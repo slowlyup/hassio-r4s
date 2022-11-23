@@ -545,6 +545,3 @@ class RedmondKettle:
                         return True
 
         return False
-
-    def isRunning(self):
-        return self._status == STATUS_ON

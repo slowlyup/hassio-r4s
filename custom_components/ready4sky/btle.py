@@ -99,7 +99,7 @@ class BTLEConnection:
 
             self._iter = 0
         except BaseException as ex:
-            _LOGGER.error('disconect failed')
+            _LOGGER.error('disconnect failed')
             _LOGGER.exception(ex)
 
     def handleNotification(self, handle, data):

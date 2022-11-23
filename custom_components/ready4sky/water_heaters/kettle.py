@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import logging
+from typing import Any
 
 from homeassistant.components.water_heater import (
     WaterHeaterEntity,
@@ -22,15 +23,14 @@ from .. import (
     CONF_MAX_TEMP,
     CONF_MIN_TEMP,
     MODE_KEEP_WARM,
-    MODE_BOIL
+    MODE_BOIL,
+    STATUS_ON
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 STATE_BOIL = 'boil'
 STATE_KEEP_WARM = 'keep_warm'
-
-SUPPORT_FLAGS_HEATER = WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeaterEntityFeature.OPERATION_MODE
 
 
 class RedmondKettle(WaterHeaterEntity):
@@ -67,7 +67,7 @@ class RedmondKettle(WaterHeaterEntity):
         self._attr_target_temperature = self._kettle._tgtemp
         self._attr_current_operation = STATE_OFF
 
-        if self._kettle.isRunning():
+        if self._kettle._status == STATUS_ON:
             if self._kettle._mode == MODE_BOIL:
                 self._attr_current_operation = STATE_BOIL
             elif self._kettle._mode == MODE_KEEP_WARM:
@@ -89,7 +89,7 @@ class RedmondKettle(WaterHeaterEntity):
             "target_temp_step": 5
         }
 
-    async def async_set_operation_mode(self, operation_mode):
+    async def async_set_operation_mode(self, operation_mode: str) -> None:
         if operation_mode == STATE_OFF:
             await self._kettle.modeOff()
         elif operation_mode == STATE_BOIL:
@@ -97,19 +97,20 @@ class RedmondKettle(WaterHeaterEntity):
         elif operation_mode == STATE_KEEP_WARM:
             await self._kettle.modeOn(MODE_KEEP_WARM, self._attr_target_temperature)
 
-    async def async_set_temperature(self, **kwargs):
-        temperature = kwargs.get(ATTR_TEMPERATURE)
+    async def async_set_temperature(self, **kwargs: Any) -> None:
+        newTargetTemperature = int(kwargs.get(ATTR_TEMPERATURE))
+        turnKeepWarmFromIntegrations = (newTargetTemperature - self.target_temperature) == 1
 
-        if not temperature:
-            return
+        if turnKeepWarmFromIntegrations:
+            newTargetTemperature -= 1
 
-        if self.state == STATE_KEEP_WARM:
-            self._kettle._tgtemp = self._attr_target_temperature = int(temperature)
-            await self.async_set_operation_mode(STATE_KEEP_WARM)
-        else:
-            await self._kettle.setTemperatureHeat(int(temperature))
-
+        self._kettle._tgtemp = newTargetTemperature
         self.update()
+
+        if self.state == STATE_KEEP_WARM or turnKeepWarmFromIntegrations:
+            await self.async_set_operation_mode(STATE_KEEP_WARM)
+        elif self.state == STATE_OFF:
+            await self._kettle.setTemperatureHeat(self._kettle._tgtemp)
 
     async def async_turn_on(self):
         await self.async_set_operation_mode(STATE_BOIL)

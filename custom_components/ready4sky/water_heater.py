@@ -1,26 +1,14 @@
 #!/usr/local/bin/python3
 # coding: utf-8
 
-import logging
-
 import voluptuous as vol
-from homeassistant.components.water_heater import (
-    WaterHeaterEntityFeature
-)
 from homeassistant.helpers import entity_platform
 
-from .water_heaters.cooker import RedmondCooker
-from .water_heaters.kettle import RedmondKettle
 from . import (
     DOMAIN
 )
-
-_LOGGER = logging.getLogger(__name__)
-
-STATE_BOIL = 'boil'
-STATE_KEEP_WARM = 'keep_warm'
-
-SUPPORT_FLAGS_HEATER = WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeaterEntityFeature.OPERATION_MODE
+from .water_heaters.cooker import RedmondCooker
+from .water_heaters.kettle import RedmondKettle
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
