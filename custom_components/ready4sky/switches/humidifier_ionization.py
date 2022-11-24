@@ -28,9 +28,7 @@ class RedmondSwitchIonization(SwitchEntity):
         self.async_on_remove(async_dispatcher_connect(self._kettle.hass, SIGNAL_UPDATE_DATA, self.update))
 
     def update(self):
-        self._attr_is_on = False
-        if self._kettle._ion == '01':
-            self._attr_is_on = True
+        self._attr_is_on = self._kettle._ion == '01'
         self.schedule_update_ha_state()
 
     @property

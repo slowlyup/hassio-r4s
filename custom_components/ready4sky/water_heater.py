@@ -2,7 +2,10 @@
 # coding: utf-8
 
 import voluptuous as vol
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import (
     DOMAIN
@@ -11,14 +14,18 @@ from .water_heaters.cooker import RedmondCooker
 from .water_heaters.kettle import RedmondKettle
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback
+) -> None:
     kettle = hass.data[DOMAIN][config_entry.entry_id]
 
     if kettle._type in [0, 1, 2]:
-        async_add_entities([RedmondKettle(kettle)], True)
+        async_add_entities([RedmondKettle(kettle)])
 
     elif kettle._type == 5:
-        async_add_entities([RedmondCooker(kettle)], True)
+        async_add_entities([RedmondCooker(kettle)])
 
         platform = entity_platform.current_platform.get()
         platform.async_register_entity_service(

@@ -1,4 +1,6 @@
-import logging
+#!/usr/local/bin/python3
+# coding: utf-8
+
 import secrets
 
 from homeassistant import config_entries
@@ -16,8 +18,6 @@ from .r4sconst import SUPPORTED_DEVICES
 
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_USE_BACKLIGHT = True
-
-_LOGGER = logging.getLogger(__name__)
 
 
 # @config_entries.HANDLERS.register(DOMAIN)

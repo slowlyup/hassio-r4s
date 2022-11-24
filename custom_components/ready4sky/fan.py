@@ -6,19 +6,25 @@ from homeassistant.components.fan import (
     FanEntity,
     FanEntityDescription
 )
-
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import DOMAIN, SIGNAL_UPDATE_DATA, STATUS_ON, MODE_BOIL
 
 # ORDERED_NAMED_FAN_SPEEDS = ['01', '02', '03', '04', '05', '06']  # off is not included
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback
+) -> None:
     kettle = hass.data[DOMAIN][config_entry.entry_id]
     if kettle._type == 3:
-        async_add_entities([RedmondFan(kettle)], True)
+        async_add_entities([RedmondFan(kettle)])
 
 
 class RedmondFan(FanEntity):
@@ -105,4 +111,3 @@ class RedmondFan(FanEntity):
     @property
     def supported_features(self) -> int:
         return SUPPORT_SET_SPEED
-

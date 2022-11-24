@@ -1,6 +1,3 @@
-#!/usr/local/bin/python3
-# coding: utf-8
-
 import logging
 from typing import Any
 
@@ -99,15 +96,15 @@ class RedmondKettle(WaterHeaterEntity):
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         newTargetTemperature = int(kwargs.get(ATTR_TEMPERATURE))
-        turnKeepWarmFromIntegrations = (newTargetTemperature - self.target_temperature) == 1
 
-        if turnKeepWarmFromIntegrations:
-            newTargetTemperature -= 1
+        # if setTemperature from other integrations, simply set keep warm
+        if (newTargetTemperature - self.target_temperature) == 1:
+            return await self.async_set_operation_mode(STATE_KEEP_WARM)
 
         self._kettle._tgtemp = newTargetTemperature
         self.update()
 
-        if self.state == STATE_KEEP_WARM or turnKeepWarmFromIntegrations:
+        if self.state == STATE_KEEP_WARM:
             await self.async_set_operation_mode(STATE_KEEP_WARM)
         elif self.state == STATE_OFF:
             await self._kettle.setTemperatureHeat(self._kettle._tgtemp)

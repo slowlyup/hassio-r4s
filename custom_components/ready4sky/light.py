@@ -8,8 +8,11 @@ from homeassistant.components.light import (
     ColorMode,
     LightEntityDescription
 )
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import (
     DOMAIN,
@@ -19,11 +22,15 @@ from . import (
 )
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback
+) -> None:
     kettle = hass.data[DOMAIN][config_entry.entry_id]
 
     if kettle._type in [1, 2]:
-        async_add_entities([RedmondNightlight(kettle)], True)
+        async_add_entities([RedmondNightlight(kettle)])
 
 
 class RedmondNightlight(LightEntity):
@@ -38,7 +45,10 @@ class RedmondNightlight(LightEntity):
         self._attr_unique_id = f'{DOMAIN}[{kettle._mac}][light][{self.entity_description.key}]'
         self._attr_device_info = DeviceInfo(connections={("mac", kettle._mac)})
 
-        self._rgb_color = kettle._rgb1
+        self._attr_color_mode = ColorMode.RGB
+        self._attr_supported_color_modes = {ColorMode.RGB}
+        self._attr_rgb_color = kettle._rgb1
+        self._attr_brightness = self._kettle._nightlight_brightness
         self._attr_is_on = False
 
     async def async_added_to_hass(self):
@@ -46,7 +56,8 @@ class RedmondNightlight(LightEntity):
         self.async_on_remove(async_dispatcher_connect(self._kettle.hass, SIGNAL_UPDATE_DATA, self.update))
 
     def update(self):
-        self._rgb_color = self._kettle._rgb1
+        self._attr_rgb_color = self._kettle._rgb1
+        self._attr_brightness = self._kettle._nightlight_brightness
         self._attr_is_on = False
 
         if self._kettle._status == STATUS_ON and self._kettle._mode == MODE_LIGHT:
@@ -62,29 +73,10 @@ class RedmondNightlight(LightEntity):
     def available(self):
         return self._kettle._available
 
-    @property
-    def rgb_color(self) -> tuple[int, int, int] | None:
-        """Return the rgb color value [int, int, int]."""
-        return self._rgb_color
-
-    @property
-    def brightness(self):
-        return self._kettle._nightlight_brightness
-
-    @property
-    def color_mode(self) -> ColorMode:
-        return ColorMode.RGB
-
-    @property
-    def supported_color_modes(self) -> set | None:
-        """Flag supported color modes."""
-        return {self.color_mode}
-
     async def async_turn_on(self, **kwargs):
-        self._rgb_color = kwargs.get(ATTR_RGB_COLOR, self._rgb_color)
+        self._attr_rgb_color = kwargs.get(ATTR_RGB_COLOR, self._attr_rgb_color)
         self._kettle._nightlight_brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
-
-        self._kettle._rgb1 = self._rgb_color
+        self._kettle._rgb1 = self._attr_rgb_color
 
         await self._kettle.startNightColor()
 
