@@ -14,8 +14,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import DOMAIN, SIGNAL_UPDATE_DATA, STATUS_ON, MODE_BOIL
 
-# ORDERED_NAMED_FAN_SPEEDS = ['01', '02', '03', '04', '05', '06']  # off is not included
-
 
 async def async_setup_entry(
     hass: HomeAssistant,

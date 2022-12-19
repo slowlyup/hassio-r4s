@@ -16,7 +16,7 @@ from . import DOMAIN, CONF_USE_BACKLIGHT
 from .btle import BTLEConnection
 from .r4sconst import SUPPORTED_DEVICES
 
-DEFAULT_SCAN_INTERVAL = 30
+DEFAULT_SCAN_INTERVAL = 60
 DEFAULT_USE_BACKLIGHT = True
 
 

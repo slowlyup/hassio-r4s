@@ -1,23 +1,43 @@
+# 0, 1, 2 - Kettle
+# 3 - AirClean
+# 4 - Heat, Socket
+# 5 - Cooker
+
 SUPPORTED_DEVICES = {
-    'RK-M170S': 0,
-    'RK-M171S': 0,
-    'RK-M173S': 0,
     'RK-G200S': 2,
+    'RK-G200S-A': 2,
     'RK-G200S-E': 2,
     'RK-G201S': 1,
     'RK-G202S': 1,
     'RK-G203S': 1,
+    'RK-G204S': 1,
     'RK-G210S': 1,
     'RK-G211S': 1,
     'RK-G212S': 1,
+    'RK-G213S': 1,
     'RK-G214S': 1,
+    'RK-G233S': 1,
     'RK-G240S': 1,
+
+    'RK-M136S': 0,
+    'RK-M139S': 0,
+    'RK-M170S': 0,
+    'RK-M170S-A': 0,
+    'RK-M170S-E': 0,
+    'RK-M171S': 0,
+    'RK-M173S': 0,
+    'RK-M173S-E': 0,
+    'RK-M215S': 2,
     'RK-M216S': 2,
     'RK-M216S-E': 2,
+
     'RAC-3706S': 3,
-    'RFS-HPL001': 4,
+
+    'RSP-100S': 4,
     'RSP-103S': 4,
+    'RFS-HPL001': 4,
     'RCH-7001S': 4,
+
     'RMC-M800S': 5,
     'RMC-M223S': 5,
     'RMC-M92S': 5,

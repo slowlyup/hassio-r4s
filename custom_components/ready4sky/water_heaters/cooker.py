@@ -1,5 +1,3 @@
-import logging
-
 from homeassistant.components.water_heater import (
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
@@ -20,8 +18,6 @@ from .. import (
     COOKER_STATUS_DELAYED_START,
 )
 from ..r4sconst import COOKER_PROGRAMS
-
-_LOGGER = logging.getLogger(__name__)
 
 STATE_BOIL = 'boil'
 STATE_KEEP_WARM = 'keep_warm'

@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 
 from homeassistant.components.water_heater import (
@@ -23,8 +22,6 @@ from .. import (
     MODE_BOIL,
     STATUS_ON
 )
-
-_LOGGER = logging.getLogger(__name__)
 
 STATE_BOIL = 'boil'
 STATE_KEEP_WARM = 'keep_warm'
