@@ -42,7 +42,7 @@ class BTLEConnection:
         self._name = self._device.name
         self._type = SUPPORTED_DEVICES.get(self._name)
 
-        if not self._type:
+        if self._type is None:
             _LOGGER.error('Device "%s" not supported. Please report developer or view file r4sconst.py', self._name)
 
         self._available = True
@@ -50,9 +50,9 @@ class BTLEConnection:
         return self
 
     async def __aenter__(self):
-        if not self._type:
+        if self._type is None:
             await self.setNameAndType()
-            if not self._type:
+            if self._type is None:
                 return self
 
         for i in range(3):
