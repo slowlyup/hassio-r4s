@@ -45,7 +45,7 @@ class RedmondKettleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if address.replace(':', '') != bleDevices[address].replace('-', ''):
                 bleDevices[address] += ' (' + address + ')'
 
-            bleDevices[address] += ' - Supported' if SUPPORTED_DEVICES.get(name) else ' - Not supported'
+            bleDevices[address] += ' - Supported' if not SUPPORTED_DEVICES.get(name) is None else ' - Not supported'
 
         mac = str(user_input.get(CONF_MAC)).upper()
         password = user_input.get(CONF_PASSWORD, secrets.token_hex(8))
