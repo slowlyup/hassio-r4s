@@ -21,7 +21,8 @@ from ..r4sconst import COOKER_PROGRAMS
 
 STATE_BOIL = 'boil'
 STATE_KEEP_WARM = 'keep_warm'
-
+OPERATIONS_LIST = list(COOKER_PROGRAMS.keys())
+OPERATIONS_LIST.append(STATE_OFF)
 
 class RedmondCooker(WaterHeaterEntity):
     def __init__(self, kettle):
@@ -42,7 +43,7 @@ class RedmondCooker(WaterHeaterEntity):
         self._attr_current_operation = STATE_OFF
         self._attr_min_temp = 30
         self._attr_max_temp = 180
-        self._attr_operation_list = [program for program, value in COOKER_PROGRAMS.items()].append(STATE_OFF)
+        self._attr_operation_list = OPERATIONS_LIST
         self._attr_supported_features = WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeaterEntityFeature.OPERATION_MODE
 
     async def async_added_to_hass(self):

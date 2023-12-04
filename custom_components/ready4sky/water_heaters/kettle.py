@@ -8,7 +8,8 @@ from homeassistant.components.water_heater import (
 )
 from homeassistant.const import (
     STATE_OFF,
-    TEMP_CELSIUS
+    UnitOfTemperature,
+    PRECISION_WHOLE
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
@@ -38,7 +39,8 @@ class RedmondKettle(WaterHeaterEntity):
 
         self._attr_unique_id = f'{DOMAIN}[{kettle._mac}][wheater][{self.entity_description.key}]'
         self._attr_device_info = DeviceInfo(connections={("mac", kettle._mac)})
-        self._attr_temperature_unit = TEMP_CELSIUS
+        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._attr_precision = PRECISION_WHOLE
 
         self._attr_current_temperature = 0
         self._attr_target_temperature = CONF_MIN_TEMP
@@ -50,7 +52,10 @@ class RedmondKettle(WaterHeaterEntity):
             STATE_BOIL,
             STATE_KEEP_WARM
         ]
-        self._attr_supported_features = WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeaterEntityFeature.OPERATION_MODE
+        self._attr_supported_features = (
+            WaterHeaterEntityFeature.TARGET_TEMPERATURE
+            | WaterHeaterEntityFeature.OPERATION_MODE
+        )
 
     async def async_added_to_hass(self):
         self.update()
