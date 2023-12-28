@@ -25,6 +25,8 @@ class RedmondSensor(SensorEntity):
         )
         self._sync = None
 
+        self._attr_translation_key = 'r4s'
+
         self._attr_unique_id = f'{DOMAIN}[{kettle._mac}][sensor][{self.entity_description.key}]'
         self._attr_device_info = DeviceInfo(connections={("mac", kettle._mac)})
 
