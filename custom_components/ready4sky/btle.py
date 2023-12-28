@@ -35,7 +35,7 @@ class BTLEConnection:
     async def setNameAndType(self):
         self._device = bluetooth.async_ble_device_from_address(self._hass, self._mac, False)
 
-        if not self._device:
+        if self._device is None:
             _LOGGER.debug('Device "%s" not found on bluetooth network', self._mac)
             return self
 
@@ -44,6 +44,7 @@ class BTLEConnection:
 
         if self._type is None:
             _LOGGER.error('Device "%s" not supported. Please report developer or view file r4sconst.py', self._name)
+            return self
 
         self._available = True
 

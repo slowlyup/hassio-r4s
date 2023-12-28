@@ -27,5 +27,21 @@
         "abort": {
             "already_configured": "Integration for this device is already configured"
         }
+    },
+    "entity": {
+        "water_heater": {
+            "r4s": {
+                "state": {
+                    "boil": "Boil",
+                    "keep_warm": "Keep warm",
+                    "light": "Night light",
+                    "program": "Program",
+                    "delayed_start": "Delayed start",
+                    "manual": "Manual",
+                    "on": "On",
+                    "off": "Off"
+                }
+            }
+        }
     }
 }
