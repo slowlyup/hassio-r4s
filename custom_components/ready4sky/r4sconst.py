@@ -47,7 +47,9 @@ SUPPORTED_DEVICES = {
     # default bluetooth adapters name
     'RFS-KKL002': 1,  # aka RK-G210S RK-G211S, RK-G212S
     'RFS-KKL003': 1,  # aka RK-G214S
-    'RFS-KKL004': 1   # aka RK-G213S, RK-G214S
+    'RFS-KKL004': 1,  # aka RK-G213S, RK-G214S
+    'RFS-KMC002': 5,  # aka RMC-M225S
+
 }
 
 COOKER_PROGRAMS = {

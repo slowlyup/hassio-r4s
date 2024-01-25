@@ -207,7 +207,7 @@ class RedmondKettle:
         await conn.sendRequest(RedmondCommand.AUTH, self._key)
         await asyncio.sleep(1.5)
 
-        if not self._auth:
+        if self._auth is False:
             raise Exception('error auth')
 
         return True
@@ -543,5 +543,7 @@ class RedmondKettle:
                 if await self.sendGetVersion(conn):
                     if await self.update(1):
                         return True
+
+        self._available = False
 
         return False

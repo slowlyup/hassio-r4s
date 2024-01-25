@@ -43,6 +43,7 @@ class BTLEConnection:
         self._type = SUPPORTED_DEVICES.get(self._name)
 
         if self._type is None:
+            self._available = False
             _LOGGER.error('Device "%s" not supported. Please report developer or view file r4sconst.py', self._name)
             return self
 
@@ -100,6 +101,7 @@ class BTLEConnection:
 
             self._iter = 0
         except BaseException as ex:
+            self._available = False
             _LOGGER.error('disconnect failed')
             _LOGGER.exception(ex)
 

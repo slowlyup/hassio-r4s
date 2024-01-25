@@ -1,5 +1,5 @@
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass, SensorEntity, SensorEntityDescription
-from homeassistant.const import ENERGY_WATT_HOUR
+from homeassistant.const import UnitOfEnergy
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 
@@ -20,7 +20,7 @@ class RedmondEnergySensor(SensorEntity):
             icon="mdi:lightning-bolt",
             device_class=SensorDeviceClass.ENERGY,
             state_class=SensorStateClass.TOTAL_INCREASING,
-            native_unit_of_measurement=ENERGY_WATT_HOUR
+            native_unit_of_measurement=UnitOfEnergy.WATT_HOUR
         )
 
         self._attr_unique_id = f'{DOMAIN}[{kettle._mac}][sensor][{self.entity_description.key}]'

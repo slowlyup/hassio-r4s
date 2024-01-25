@@ -2,9 +2,9 @@
 # coding: utf-8
 
 from homeassistant.components.fan import (
-    SUPPORT_SET_SPEED,
     FanEntity,
-    FanEntityDescription
+    FanEntityDescription,
+    FanEntityFeature
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -108,4 +108,4 @@ class RedmondFan(FanEntity):
 
     @property
     def supported_features(self) -> int:
-        return SUPPORT_SET_SPEED
+        return FanEntityFeature.SET_SPEED

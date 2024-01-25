@@ -5,7 +5,7 @@ from homeassistant.components.water_heater import (
 )
 from homeassistant.const import (
     STATE_OFF,
-    TEMP_CELSIUS
+    UnitOfTemperature
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
@@ -31,14 +31,14 @@ class RedmondCooker(WaterHeaterEntity):
             key="cooker",
             name=kettle._name + " Cooker",
             icon="mdi:chef-hat",
-            unit_of_measurement=TEMP_CELSIUS
+            unit_of_measurement=UnitOfTemperature.CELSIUS
         )
 
         self._attr_translation_key = 'r4s'
 
         self._attr_unique_id = f'{DOMAIN}[{kettle._mac}][wheater][{self.entity_description.key}]'
         self._attr_device_info = DeviceInfo(connections={("mac", kettle._mac)})
-        self._attr_temperature_unit = TEMP_CELSIUS
+        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
 
         self._attr_current_temperature = 0
         self._attr_target_temperature = 30
