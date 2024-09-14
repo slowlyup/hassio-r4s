@@ -43,12 +43,14 @@ SUPPORTED_DEVICES = {
     'RMC-M92S': 5,
     'RMC-M92S-E': 5,
     'RMC-M40S': 5,
+    'RMC-M227S': 5,
 
     # default bluetooth adapters name
     'RFS-KKL002': 1,  # aka RK-G210S RK-G211S, RK-G212S
     'RFS-KKL003': 1,  # aka RK-G214S
     'RFS-KKL004': 1,  # aka RK-G213S, RK-G214S
     'RFS-KMC002': 5,  # aka RMC-M225S
+    'RFS-KMC004': 5,  # aka RMC-M227S
 
 }
 
